@@ -11,7 +11,7 @@ source smaller helper scripts or dependency libraries (for example, the prompt `
 and there are very few solutions to that, which are demanding (e.g. specifying all helper files in plugin load
 command and investigating updates to the plugin – in Zinit case: by using `compile` ice-mod).
 
-![image](https://raw.githubusercontent.com/zdharma-continuum/zinit/images/mod-auto-compile.png)
+![image](https://raw.githubusercontent.com/zdharma-continuum/zinit-module/HEAD/images/mod-auto-compile.png)
 
 
 ## Installation
