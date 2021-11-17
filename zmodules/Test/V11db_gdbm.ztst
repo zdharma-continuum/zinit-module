@@ -3,7 +3,7 @@
 %prep
 
  module_path=( `pwd`/Modules )
- modname="zdharma-continuum/zgdbm"
+ modname="zdharma_continuum/zgdbm"
  #modname="zsh/db/gdbm"
  dbfile=db.gdbm
  if ! zmodload $modname ; then

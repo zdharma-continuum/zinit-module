@@ -1353,7 +1353,7 @@ bin_zpmod( char *nam, char **argv, UNUSED( Options ops ), UNUSED( int func ) ) {
 
         target = *argv ++;
         if ( !target ) {
-            zwarnnam( nam, "%d: `report-append' is missing the target plugin ID (like \"zdharma-continuum/zbrowse\", see -h", __LINE__ );
+            zwarnnam( nam, "%d: `report-append' is missing the target plugin ID (like \"zdharma_continuum/zbrowse\", see -h", __LINE__ );
             return 1;
         }
         target = zp_unmetafy_zalloc( target, &target_len );
@@ -1807,7 +1807,7 @@ finish_( UNUSED( Module m ) )
     bn = ( Builtin ) builtintab->getnode2( builtintab, "source" );
     bn->handlerfunc = originalSource;
 
-    printf( "zdharma-continuum/zinit module unloaded\n" );
+    printf( "zdharma_continuum/zinit module unloaded\n" );
     fflush( stdout );
     return 0;
 }
