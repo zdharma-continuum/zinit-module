@@ -1,15 +1,15 @@
 #!/usr/bin/env zsh
 
 # Go to root directory
-cd ${0:a:h}/..
+cd ${0:A:h}/..
 
 [[ -z "$1" || "$1" = "-h" || "$1" = "--help" ]] && {
   print "Single argument: path to Zsh source tree"
   exit 0
 }
 
-# print "Will invoke git clean -dxf, 3 seconds"
-# sleep 3 && git clean -dxf
+print "Will invoke git clean -dxf, 3 seconds"
+sleep 3 && git clean -dxf
 
 [[ ! -d "$1" ]] && {
   print "Path to Zsh source doesn't exist (i.e.: $1)"
