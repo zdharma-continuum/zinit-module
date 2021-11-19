@@ -50,7 +50,7 @@ investigating this. The list can be surprising.
 To enable debug messages from the module set:
 
 ```zsh
-typeset -g ZPLG_MOD_DEBUG=1
+typeset -g ZINIT_MOD_DEBUG=1
 ```
 
 [gitter-badge]: https://badges.gitter.im/zdharma-continuum/zinit.svg
