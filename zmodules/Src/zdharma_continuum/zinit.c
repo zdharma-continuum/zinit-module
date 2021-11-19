@@ -1,7 +1,7 @@
 /* -*- Mode: C; c-default-style: "linux"; c-basic-offset: 4; indent-tabs-mode: nil -*-
  * vim:sw=4:sts=4:et
  *
- * zinit.c – module for Zplugin plugin manager
+ * zinit.c – module for Zinit plugin manager
  *
  * Copyright (c) 2017 Sebastian Gniazdowski
  * All rights reserved.
@@ -863,14 +863,14 @@ custom_try_source_file(char *file)
         /* Invoke compilation */
         if ( access( file, R_OK ) == 0 && access( file, F_OK ) == 0 && 
                 0 != strcmp( file, "/dev/null" ) && 0 != strcmp( file, "./" ) ) {
-            bin_zcompile("ZpluginModule_", args, &ops, 0);
+            bin_zcompile("ZinitModule_", args, &ops, 0);
         } else {
            if ( 0 == strcmp(
                     getsparam( "ZINIT_MOD_DEBUG" ) ?
                         getsparam( "ZINIT_MOD_DEBUG" ) : "0",
                     "1" )
           ) {
-               zwarnnam( "ZpluginModule",
+               zwarnnam( "ZinitModule",
                          "%d: Couldn't read the script: `%s', compilation skipped",
                          __LINE__, file );
           }
@@ -1398,7 +1398,7 @@ void zpmod_usage() {
                      "\n"
                      "[33mCommand <report-append>:[0m\n"
                      "\n"
-                     "Used by Zplugin internally to speed up loading plugins with tracking (reporting).\n"
+                     "Used by Zinit internally to speed up loading plugins with tracking (reporting).\n"
                      "It extends the given field {plugin-ID} in $ZINIT_REPORTS hash, with the given string\n"
                      "{new-report-body}.\n"
                      "\n"
@@ -1428,7 +1428,7 @@ zp_append_report( const char *nam, const char *target, int target_len, const cha
     /* Get ZINIT_REPORTS associative array */
     pm = ( Param ) paramtab->getnode( paramtab, "ZINIT_REPORTS" );
     if ( !pm ) {
-        zwarnnam( nam, "%d: Parameter $ZINIT_REPORTS isn't declared. Zplugin is not loaded? I.e. not sourced.", __LINE__ );
+        zwarnnam( nam, "%d: Parameter $ZINIT_REPORTS isn't declared. Zinit is not loaded? I.e. not sourced.", __LINE__ );
         return 1;
     }
 
