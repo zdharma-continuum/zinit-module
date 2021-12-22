@@ -22,7 +22,7 @@ fi
 echo ">>> Downloading zdharma-continuum/zinit module to $ZINIT_HOME/mod-bin"
 if test -d "$ZINIT_HOME/mod-bin/.git"; then
   cd "$ZINIT_HOME/mod-bin"  || exit 9
-  git pull origin master
+  git pull origin main
 else
   cd "$ZINIT_HOME" || exit 9
   git clone --depth 10 https://github.com/zdharma-continuum/zinit.git mod-bin
