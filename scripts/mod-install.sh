@@ -19,13 +19,13 @@ if ! test -d "$ZINIT_HOME"; then
   chmod g-rwX "$ZINIT_HOME"
 fi
 
-echo ">>> Downloading zdharma-continuum/zinit module to $ZINIT_HOME/mod-bin"
+echo ">>> Downloading zdharma-continuum/zinit-module to $ZINIT_HOME/mod-bin"
 if test -d "$ZINIT_HOME/mod-bin/.git"; then
   cd "$ZINIT_HOME/mod-bin"  || exit 9
   git pull origin main
 else
   cd "$ZINIT_HOME" || exit 9
-  git clone --depth 10 https://github.com/zdharma-continuum/zinit.git mod-bin
+  git clone --depth 10 https://github.com/zdharma-continuum/zinit-module.git mod-bin
 fi
 echo ">>> Done"
 
@@ -33,9 +33,9 @@ echo ">>> Done"
 # Build the module
 #
 
-cd "$ZINIT_HOME/mod-bin/zmodules" || exit 9
+cd "$ZINIT_HOME/mod-bin" || exit 9
 echo "$col_pname== Building module zdharma-continuum/zinit, running: a make clean, then ./configure and then make ==$col_rst"
-echo "$col_pname== The module sources are located at: $ZINIT_HOME/mod-bin/zmodules ==$col_rst"
+echo "$col_pname== The module sources are located at: $ZINIT_HOME/mod-bin ==$col_rst"
 if test -f Makefile; then
   if [ "$1" = "--clean" ]; then
     echo "$col_info2-- make distclean --$col_rst"
@@ -54,7 +54,7 @@ if CPPFLAGS=-I/usr/local/include CFLAGS="-g -Wall -O3" LDFLAGS=-L/usr/local/lib 
   if make; then
     echo "${col_info}Module has been built correctly.$col_rst"
     echo "To load the module, add following 2 lines to .zshrc, at top:"
-    echo "  module_path+=( \"$ZINIT_HOME/mod-bin/zmodules/Src\" )"
+    echo "  module_path+=( \"$ZINIT_HOME/mod-bin/Src\" )"
     echo "  zmodload zdharma-continuum/zinit"
     echo ""
     echo "After loading, use command \`zpmod' to communicate with the module."
@@ -64,7 +64,7 @@ if CPPFLAGS=-I/usr/local/include CFLAGS="-g -Wall -O3" LDFLAGS=-L/usr/local/lib 
     echo "while the module is loaded (check with Zsh command \`zmodload')."
   else
     echo "${col_error}Module didn't build.$col_rst. You can copy the error messages and submit"
-    echo "error-report at: https://github.com/zdharma-continuum/zinit/issues"
+    echo "error-report at: https://github.com/zdharma-continuum/zinit-module/issues"
   fi
 fi
 
