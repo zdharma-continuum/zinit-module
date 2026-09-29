@@ -39,18 +39,19 @@ dnl   before finding the right type.
 dnl
 
 AC_DEFUN(zsh_64_BIT_TYPE,
-[AC_TRY_RUN([
+[AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
 
+int
 main()
 {
   $1 foo = 0; 
   int bar = (int) foo;
   return sizeof($1) != 8;
 }
-], $2="$1", $2=no,
+]])],[$2="$1"],[$2=no],
   [if test x$3 != x ; then
     $2="$1"
   else
@@ -113,11 +114,11 @@ void *zsh_getaddr1()
 };
 ' > conftest1.c
 sed 's/zsh_getaddr1/zsh_getaddr2/' < conftest1.c > conftest2.c
-if AC_TRY_COMMAND($CC -c $CFLAGS $CPPFLAGS $DLCFLAGS conftest1.c 1>&AC_FD_CC) &&
-AC_TRY_COMMAND($DLLD -o conftest1.$DL_EXT $LDFLAGS $DLLDFLAGS conftest1.o $LIBS 1>&AC_FD_CC) &&
-AC_TRY_COMMAND($CC -c $CFLAGS $CPPFLAGS $DLCFLAGS conftest2.c 1>&AC_FD_CC) &&
-AC_TRY_COMMAND($DLLD -o conftest2.$DL_EXT $LDFLAGS $DLLDFLAGS conftest2.o $LIBS 1>&AC_FD_CC); then
-    AC_TRY_RUN([
+if AC_TRY_COMMAND($CC -c $CFLAGS $CPPFLAGS $DLCFLAGS conftest1.c 1>&AS_MESSAGE_LOG_FD) &&
+AC_TRY_COMMAND($DLLD -o conftest1.$DL_EXT $LDFLAGS $DLLDFLAGS conftest1.o $LIBS 1>&AS_MESSAGE_LOG_FD) &&
+AC_TRY_COMMAND($CC -c $CFLAGS $CPPFLAGS $DLCFLAGS conftest2.c 1>&AS_MESSAGE_LOG_FD) &&
+AC_TRY_COMMAND($DLLD -o conftest2.$DL_EXT $LDFLAGS $DLLDFLAGS conftest2.o $LIBS 1>&AS_MESSAGE_LOG_FD); then
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #ifdef HPUX10DYNAMIC
 #include <dl.h>
 #define RTLD_LAZY BIND_DEFERRED
@@ -145,31 +146,32 @@ char *zsh_gl_sym_addr ;
 #define RTLD_GLOBAL 0
 #endif
 
+int
 main()
 {
     void *handle1, *handle2;
     void *(*zsh_getaddr1)(), *(*zsh_getaddr2)();
     void *sym1, *sym2;
     handle1 = dlopen("./conftest1.$DL_EXT", RTLD_LAZY | RTLD_GLOBAL);
-    if(!handle1) exit(1);
+    if(!handle1) return(1);
     handle2 = dlopen("./conftest2.$DL_EXT", RTLD_LAZY | RTLD_GLOBAL);
-    if(!handle2) exit(1);
+    if(!handle2) return(1);
     zsh_getaddr1 = (void *(*)()) dlsym(handle1, "${us}zsh_getaddr1");
     zsh_getaddr2 = (void *(*)()) dlsym(handle2, "${us}zsh_getaddr2");
     sym1 = zsh_getaddr1();
     sym2 = zsh_getaddr2();
-    if(!sym1 || !sym2) exit(1);
-    if(sym1 != sym2) exit(1);
+    if(!sym1 || !sym2) return(1);
+    if(sym1 != sym2) return(1);
     dlclose(handle1);
     handle1 = dlopen("./conftest1.$DL_EXT", RTLD_LAZY | RTLD_GLOBAL);
-    if(!handle1) exit(1);
+    if(!handle1) return(1);
     zsh_getaddr1 = (void *(*)()) dlsym(handle1, "${us}zsh_getaddr1");
     sym1 = zsh_getaddr1();
-    if(!sym1) exit(1);
-    if(sym1 != sym2) exit(1);
-    exit(0);
+    if(!sym1) return(1);
+    if(sym1 != sym2) return(1);
+    return(0);
 }
-], [zsh_cv_shared_$1=yes],
+]])],[zsh_cv_shared_$1=yes],
 [zsh_cv_shared_$1=no],
 [zsh_cv_shared_$1=no]
 )
@@ -194,11 +196,11 @@ else
 fi
 echo 'int fred () { return 42; }' > conftest1.c
 echo 'int fred () { return 69; }' > conftest2.c
-if AC_TRY_COMMAND($CC -c $CFLAGS $CPPFLAGS $DLCFLAGS conftest1.c 1>&AC_FD_CC) &&
-AC_TRY_COMMAND($DLLD -o conftest1.$DL_EXT $LDFLAGS $DLLDFLAGS conftest1.o $LIBS 1>&AC_FD_CC) &&
-AC_TRY_COMMAND($CC -c $CFLAGS $CPPFLAGS $DLCFLAGS conftest2.c 1>&AC_FD_CC) &&
-AC_TRY_COMMAND($DLLD -o conftest2.$DL_EXT $LDFLAGS $DLLDFLAGS conftest2.o $LIBS 1>&AC_FD_CC); then
-    AC_TRY_RUN([
+if AC_TRY_COMMAND($CC -c $CFLAGS $CPPFLAGS $DLCFLAGS conftest1.c 1>&AS_MESSAGE_LOG_FD) &&
+AC_TRY_COMMAND($DLLD -o conftest1.$DL_EXT $LDFLAGS $DLLDFLAGS conftest1.o $LIBS 1>&AS_MESSAGE_LOG_FD) &&
+AC_TRY_COMMAND($CC -c $CFLAGS $CPPFLAGS $DLCFLAGS conftest2.c 1>&AS_MESSAGE_LOG_FD) &&
+AC_TRY_COMMAND($DLLD -o conftest2.$DL_EXT $LDFLAGS $DLLDFLAGS conftest2.o $LIBS 1>&AS_MESSAGE_LOG_FD); then
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #ifdef HPUX10DYNAMIC
 #include <dl.h>
 #define RTLD_LAZY BIND_DEFERRED
@@ -226,21 +228,21 @@ char *zsh_gl_sym_addr ;
 #define RTLD_GLOBAL 0
 #endif
 
-
+int
 main()
 {
     void *handle1, *handle2;
     int (*fred1)(), (*fred2)();
     handle1 = dlopen("./conftest1.$DL_EXT", RTLD_LAZY | RTLD_GLOBAL);
-    if(!handle1) exit(1);
+    if(!handle1) return(1);
     handle2 = dlopen("./conftest2.$DL_EXT", RTLD_LAZY | RTLD_GLOBAL);
-    if(!handle2) exit(1);
+    if(!handle2) return(1);
     fred1 = (int (*)()) dlsym(handle1, "${us}fred");
     fred2 = (int (*)()) dlsym(handle2, "${us}fred");
-    if(!fred1 || !fred2) exit(1);
-    exit((*fred1)() != 42 || (*fred2)() != 69);
+    if(!fred1 || !fred2) return(1);
+    return((*fred1)() != 42 || (*fred2)() != 69);
 }
-], [zsh_cv_sys_dynamic_clash_ok=yes],
+]])],[zsh_cv_sys_dynamic_clash_ok=yes],
 [zsh_cv_sys_dynamic_clash_ok=no],
 [zsh_cv_sys_dynamic_clash_ok=no]
 )
@@ -269,11 +271,11 @@ else
 fi
 echo 'int fred () { return 42; }' > conftest1.c
 echo 'extern int fred(); int barney () { return fred() + 27; }' > conftest2.c
-if AC_TRY_COMMAND($CC -c $CFLAGS $CPPFLAGS $DLCFLAGS conftest1.c 1>&AC_FD_CC) &&
-AC_TRY_COMMAND($DLLD -o conftest1.$DL_EXT $LDFLAGS $DLLDFLAGS conftest1.o $LIBS 1>&AC_FD_CC) &&
-AC_TRY_COMMAND($CC -c $CFLAGS $CPPFLAGS $DLCFLAGS conftest2.c 1>&AC_FD_CC) &&
-AC_TRY_COMMAND($DLLD -o conftest2.$DL_EXT $LDFLAGS $DLLDFLAGS conftest2.o $LIBS 1>&AC_FD_CC); then
-    AC_TRY_RUN([
+if AC_TRY_COMMAND($CC -c $CFLAGS $CPPFLAGS $DLCFLAGS conftest1.c 1>&AS_MESSAGE_LOG_FD) &&
+AC_TRY_COMMAND($DLLD -o conftest1.$DL_EXT $LDFLAGS $DLLDFLAGS conftest1.o $LIBS 1>&AS_MESSAGE_LOG_FD) &&
+AC_TRY_COMMAND($CC -c $CFLAGS $CPPFLAGS $DLCFLAGS conftest2.c 1>&AS_MESSAGE_LOG_FD) &&
+AC_TRY_COMMAND($DLLD -o conftest2.$DL_EXT $LDFLAGS $DLLDFLAGS conftest2.o $LIBS 1>&AS_MESSAGE_LOG_FD); then
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #ifdef HPUX10DYNAMIC
 #include <dl.h>
 #define RTLD_LAZY BIND_DEFERRED
@@ -301,19 +303,20 @@ char *zsh_gl_sym_addr ;
 #define RTLD_GLOBAL 0
 #endif
 
+int
 main()
 {
     void *handle;
     int (*barneysym)();
     handle = dlopen("./conftest1.$DL_EXT", RTLD_LAZY | RTLD_GLOBAL);
-    if(!handle) exit(1);
+    if(!handle) return(1);
     handle = dlopen("./conftest2.$DL_EXT", RTLD_LAZY | RTLD_GLOBAL);
-    if(!handle) exit(1);
+    if(!handle) return(1);
     barneysym = (int (*)()) dlsym(handle, "${us}barney");
-    if(!barneysym) exit(1);
-    exit((*barneysym)() != 69);
+    if(!barneysym) return(1);
+    return((*barneysym)() != 69);
 }
-], [zsh_cv_sys_dynamic_rtld_global=yes],
+]])],[zsh_cv_sys_dynamic_rtld_global=yes],
 [zsh_cv_sys_dynamic_rtld_global=no],
 [zsh_cv_sys_dynamic_rtld_global=no]
 )
@@ -338,11 +341,11 @@ else
     us=
 fi
 echo 'extern int fred(); int barney () { return fred() + 27; }' > conftest1.c
-if AC_TRY_COMMAND($CC -c $CFLAGS $CPPFLAGS $DLCFLAGS conftest1.c 1>&AC_FD_CC) &&
-AC_TRY_COMMAND($DLLD -o conftest1.$DL_EXT $LDFLAGS $DLLDFLAGS conftest1.o $LIBS 1>&AC_FD_CC); then
+if AC_TRY_COMMAND($CC -c $CFLAGS $CPPFLAGS $DLCFLAGS conftest1.c 1>&AS_MESSAGE_LOG_FD) &&
+AC_TRY_COMMAND($DLLD -o conftest1.$DL_EXT $LDFLAGS $DLLDFLAGS conftest1.o $LIBS 1>&AS_MESSAGE_LOG_FD); then
     save_ldflags=$LDFLAGS
     LDFLAGS="$LDFLAGS $EXTRA_LDFLAGS"
-    AC_TRY_RUN([
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #ifdef HPUX10DYNAMIC
 #include <dl.h>
 #define RTLD_LAZY BIND_DEFERRED
@@ -370,19 +373,20 @@ char *zsh_gl_sym_addr ;
 #define RTLD_GLOBAL 0
 #endif
 
+int
 main()
 {
     void *handle;
     int (*barneysym)();
     handle = dlopen("./conftest1.$DL_EXT", RTLD_LAZY | RTLD_GLOBAL);
-    if(!handle) exit(1);
+    if(!handle) return(1);
     barneysym = (int (*)()) dlsym(handle, "${us}barney");
-    if(!barneysym) exit(1);
-    exit((*barneysym)() != 69);
+    if(!barneysym) return(1);
+    return((*barneysym)() != 69);
 }
 
 int fred () { return 42; }
-], [zsh_cv_sys_dynamic_execsyms=yes],
+]])],[zsh_cv_sys_dynamic_execsyms=yes],
 [zsh_cv_sys_dynamic_execsyms=no],
 [zsh_cv_sys_dynamic_execsyms=no]
 )
@@ -411,11 +415,11 @@ elif
 	us=
     fi
     echo 'extern int fred(); int barney() { return fred() + 27; }' > conftest1.c
-    AC_TRY_COMMAND($CC -c $CFLAGS $CPPFLAGS $DLCFLAGS conftest1.c 1>&AC_FD_CC) &&
-    AC_TRY_COMMAND($DLLD -o conftest1.$DL_EXT $LDFLAGS $DLLDFLAGS conftest1.o $LIBS 1>&AC_FD_CC); then
+    AC_TRY_COMMAND($CC -c $CFLAGS $CPPFLAGS $DLCFLAGS conftest1.c 1>&AS_MESSAGE_LOG_FD) &&
+    AC_TRY_COMMAND($DLLD -o conftest1.$DL_EXT $LDFLAGS $DLLDFLAGS conftest1.o $LIBS 1>&AS_MESSAGE_LOG_FD); then
     save_ldflags=$LDFLAGS
     LDFLAGS="$LDFLAGS $EXTRA_LDFLAGS -s"
-    AC_TRY_RUN([
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #ifdef HPUX10DYNAMIC
 #include <dl.h>
 #define RTLD_LAZY BIND_DEFERRED
@@ -443,19 +447,20 @@ char *zsh_gl_sym_addr ;
 #define RTLD_GLOBAL 0
 #endif
 
+int
 main()
 {
     void *handle;
     int (*barneysym)();
     handle = dlopen("./conftest1.$DL_EXT", RTLD_LAZY | RTLD_GLOBAL);
-    if(!handle) exit(1);
+    if(!handle) return(1);
     barneysym = (int (*)()) dlsym(handle, "${us}barney");
-    if(!barneysym) exit(1);
-    exit((*barneysym)() != 69);
+    if(!barneysym) return(1);
+    return((*barneysym)() != 69);
 }
 
 int fred () { return 42; }
-], [zsh_cv_sys_dynamic_strip_exe=yes],
+]])],[zsh_cv_sys_dynamic_strip_exe=yes],
 [zsh_cv_sys_dynamic_strip_exe=no],
 [zsh_cv_sys_dynamic_strip_exe=no]
 )
@@ -467,7 +472,7 @@ fi
 ])
 
 dnl
-dnl zsh_SYS_DYNAMIC_STRIP_EXE
+dnl zsh_SYS_DYNAMIC_STRIP_LIB
 dnl   Check whether it is safe to strip dynamically loaded libraries.
 dnl
 
@@ -480,9 +485,9 @@ else
     us=
 fi
 echo 'int fred () { return 42; }' > conftest1.c
-if AC_TRY_COMMAND($CC -c $CFLAGS $CPPFLAGS $DLCFLAGS conftest1.c 1>&AC_FD_CC) &&
-AC_TRY_COMMAND($DLLD -o conftest1.$DL_EXT $LDFLAGS $DLLDFLAGS -s conftest1.o $LIBS 1>&AC_FD_CC); then
-    AC_TRY_RUN([
+if AC_TRY_COMMAND($CC -c $CFLAGS $CPPFLAGS $DLCFLAGS conftest1.c 1>&AS_MESSAGE_LOG_FD) &&
+AC_TRY_COMMAND($DLLD -o conftest1.$DL_EXT $LDFLAGS $DLLDFLAGS -s conftest1.o $LIBS 1>&AS_MESSAGE_LOG_FD); then
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #ifdef HPUX10DYNAMIC
 #include <dl.h>
 #define RTLD_LAZY BIND_DEFERRED
@@ -510,17 +515,18 @@ char *zsh_gl_sym_addr ;
 #define RTLD_GLOBAL 0
 #endif
 
+int
 main()
 {
     void *handle;
     int (*fredsym)();
     handle = dlopen("./conftest1.$DL_EXT", RTLD_LAZY | RTLD_GLOBAL);
-    if(!handle) exit(1);
+    if(!handle) return(1);
     fredsym = (int (*)()) dlsym(handle, "${us}fred");
-    if(!fredsym) exit(1);
-    exit((*fredsym)() != 42);
+    if(!fredsym) return(1);
+    return((*fredsym)() != 42);
 }
-], [zsh_cv_sys_dynamic_strip_lib=yes],
+]])],[zsh_cv_sys_dynamic_strip_lib=yes],
 [zsh_cv_sys_dynamic_strip_lib=no],
 [zsh_cv_sys_dynamic_strip_lib=no]
 )
@@ -538,9 +544,9 @@ dnl
 AC_DEFUN(zsh_PATH_UTMP,
 [AC_CACHE_CHECK([for $1 file], [zsh_cv_path_$1],
 [for dir in /etc /usr/etc /var/adm /usr/adm /var/run /var/log ./conftest; do
-  zsh_cv_path_$1=${dir}/$1
+  m4_foreach([file],[$@],[zsh_cv_path_$1=${dir}/file
   test -f $zsh_cv_path_$1 && break
-  zsh_cv_path_$1=no
+  ])zsh_cv_path_$1=no
 done
 ])
 AH_TEMPLATE([PATH_]translit($1, [a-z], [A-Z])[_FILE],
@@ -558,7 +564,7 @@ dnl
 
 AC_DEFUN(zsh_TYPE_EXISTS,
 [AC_CACHE_CHECK([for $2], [zsh_cv_type_exists_[]translit($2, [ ], [_])],
-[AC_TRY_COMPILE([$1], [$2 testvar;],
+[AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[$1]], [[$2 testvar;]])],
 [zsh_cv_type_exists_[]translit($2, [ ], [_])=yes],
 [zsh_cv_type_exists_[]translit($2, [ ], [_])=no])
 ])
@@ -577,7 +583,7 @@ dnl
 
 AC_DEFUN(zsh_STRUCT_MEMBER,
 [AC_CACHE_CHECK([for $3 in $2], [zsh_cv_struct_member_[]translit($2, [ ], [_])_$3],
-[AC_TRY_COMPILE([$1], [$2 testvar; testvar.$3;],
+[AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[$1]], [[$2 testvar; testvar.$3;]])],
 [zsh_cv_struct_member_[]translit($2, [ ], [_])_$3=yes],
 [zsh_cv_struct_member_[]translit($2, [ ], [_])_$3=no])
 ])
@@ -615,25 +621,25 @@ AC_SUBST(tzsh)dnl
 
 AC_DEFUN(zsh_COMPILE_FLAGS,
     [AC_ARG_ENABLE(cppflags,
-	AC_HELP_STRING([--enable-cppflags=...], [specify C preprocessor flags]),
+	AS_HELP_STRING([--enable-cppflags=...], [specify C preprocessor flags]),
 	if test "$enableval" = "yes"
 	then CPPFLAGS="$1"
 	else CPPFLAGS="$enable_cppflags"
 	fi)
     AC_ARG_ENABLE(cflags,
-	AC_HELP_STRING([--enable-cflags=...], [specify C compiler flags]),
+	AS_HELP_STRING([--enable-cflags=...], [specify C compiler flags]),
 	if test "$enableval" = "yes"
 	then CFLAGS="$2"
 	else CFLAGS="$enable_cflags"
 	fi)
     AC_ARG_ENABLE(ldflags,
-	AC_HELP_STRING([--enable-ldflags=...], [specify linker flags]),
+	AS_HELP_STRING([--enable-ldflags=...], [specify linker flags]),
 	if test "$enableval" = "yes"
 	then LDFLAGS="$3"
 	else LDFLAGS="$enable_ldflags"
 	fi)
     AC_ARG_ENABLE(libs,
-	AC_HELP_STRING([--enable-libs=...], [specify link libraries]),
+	AS_HELP_STRING([--enable-libs=...], [specify link libraries]),
 	if test "$enableval" = "yes"
 	then LIBS="$4"
 	else LIBS="$enable_libs"
@@ -652,10 +658,10 @@ AC_DEFUN([zsh_CHECK_SOCKLEN_T],[
     [zsh_cv_type_socklen_t],
     [zsh_cv_type_socklen_t=
     for zsh_type in socklen_t int "unsigned long" size_t ; do
-      AC_TRY_COMPILE(
-        [#include <sys/types.h>
-         #include <sys/socket.h>],
-        [extern int accept (int, struct sockaddr *, $zsh_type *);],
+      AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+        [[#include <sys/types.h>
+          #include <sys/socket.h>]],
+        [[extern int accept (int, struct sockaddr *, $zsh_type *);]])],
         [zsh_cv_type_socklen_t="$zsh_type"; break],
         []
       )
@@ -674,17 +680,36 @@ AC_DEFUN(zsh_LIMIT_PRESENT,
 [Define to 1 if ]$1[ is present (whether or not as a macro).])
 AC_CACHE_CHECK([for limit $1],
 zsh_cv_have_$1,
-[AC_TRY_COMPILE([
+[AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #include <sys/types.h>
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif
-#include <sys/resource.h>],
-[$1],
-  zsh_cv_have_$1=yes,
-  zsh_cv_have_$1=no)])
+#include <sys/resource.h>]],
+[[$1]])],
+  [zsh_cv_have_$1=yes],
+  [zsh_cv_have_$1=no])])
 
 if test $zsh_cv_have_$1 = yes; then
   AC_DEFINE(HAVE_$1)
 fi])
 
+dnl Check whether rlmit $1, e.g. AS, is the same as rlmit $3, e.g. VMEM.
+dnl $2 is lowercase $1, $4 is lowercase $3.
+AC_DEFUN(zsh_LIMITS_EQUAL,
+[AH_TEMPLATE([RLIMIT_]$1[_IS_]$3,
+[Define to 1 if RLIMIT_]$1[ and RLIMIT_]$3[ both exist and are equal.])
+AC_CACHE_CHECK([if RLIMIT_]$1[ and RLIMIT_]$3[ are the same],
+zsh_cv_rlimit_$2_is_$4,
+[AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#include <sys/types.h>
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+#include <sys/resource.h>]],
+[[static char x[(RLIMIT_$1 == RLIMIT_$3)? 1 : -1]]])],
+  [zsh_cv_rlimit_$2_is_$4=yes],
+  [zsh_cv_rlimit_$2_is_$4=no])])
+if test x$zsh_cv_rlimit_$2_is_$4 = xyes; then
+  AC_DEFINE(RLIMIT_$1_IS_$3)
+fi])
