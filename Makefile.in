@@ -68,7 +68,9 @@ config: config.h
 config.status: $(sdir)/configure
 	$(SHELL) ./config.status --recheck
 
-$(sdir)/configure: $(sdir)/aclocal.m4 $(sdir)/aczsh.m4 $(sdir)/configure.ac
+# The repo tracks configure, config.h.in and stamp-h.in. Run ./.preconfig to regenerate them.
+# A git checkout sets arbitrary mtimes. These rules run only for a missing file.
+$(sdir)/configure:
 	cd $(sdir) && autoconf
 
 config.h: stamp-h
@@ -80,7 +82,7 @@ config.modules: $(sdir)/config.h.in config.status config.modules.sh
 	$(SHELL) ./config.modules.sh
 
 $(sdir)/config.h.in: $(sdir)/stamp-h.in
-$(sdir)/stamp-h.in: $(sdir)/configure
+$(sdir)/stamp-h.in:
 	cd $(sdir) && autoheader
 	echo > $(sdir)/stamp-h.in
 
