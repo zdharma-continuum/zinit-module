@@ -788,6 +788,22 @@ custom_source(char *s)
     return ret;
 }
 /* }}} */
+/* STATIC FUNCTION: zp_zwc_is_newer {{{ */
+/* Return 1 when the .zwc file is strictly newer than its script. */
+/* Equal times count as stale. A rewrite in the same second keeps the old seconds. */
+/**/
+static int
+zp_zwc_is_newer( struct stat *zwc, struct stat *script )
+{
+    if ( zwc->st_mtime != script->st_mtime )
+        return zwc->st_mtime > script->st_mtime;
+#ifdef GET_ST_MTIME_NSEC
+    return GET_ST_MTIME_NSEC( *zwc ) > GET_ST_MTIME_NSEC( *script );
+#else
+    return 0;
+#endif
+}
+/* }}} */
 /* FUNCTION: custom_try_source_file {{{ */
 /**/
 Eprog
@@ -819,8 +835,8 @@ custom_try_source_file(char *file)
     if ( faltered ) {
         *tail++ = '/';
     }
-    /* If there is no zwc file, or if it is less recent than script file */
-    if ( ( !rn && ( rc || ( stc.st_mtime < stn.st_mtime ) ) ) &&
+    /* Compile when the .zwc file is missing or not newer than the script. */
+    if ( ( !rn && ( rc || !zp_zwc_is_newer( &stc, &stn ) ) ) &&
             ( access( file_dup, W_OK ) == 0 || 0 == strcmp(
                 getsparam( "ZINIT_MOD_DEBUG" ) ?
                     getsparam( "ZINIT_MOD_DEBUG" ) : "0",

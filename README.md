@@ -95,9 +95,10 @@ zmodload -u zdharma_continuum/zinit
 
 ### Automatic compilation
 
-When you source a file, the module compiles it to `file.zwc` if the `.zwc` file is missing or older than the script. It
-compiles only when it can write to the directory of the script. Then it loads the `.zwc` file. If no current `.zwc` file
-exists, the module sources the plain script.
+When you source a file, the module compiles it to `file.zwc` if the `.zwc` file is missing or not newer than the script.
+It compares modification times to the nanosecond where the system supports it. It compiles only when it can write to the
+directory of the script. Then it loads the `.zwc` file. If no current `.zwc` file exists, the module sources the plain
+script.
 
 Aliases that exist when you run `source` expand in the compiled script, as they do in a plain `source`. The `.zwc` file
 keeps those aliases until the script changes. Zsh compiles the whole file before it runs any line. An alias that the
