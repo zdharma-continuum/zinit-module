@@ -1,3 +1,9 @@
+## [1.1.0](https://github.com/zdharma-continuum/zinit-module/compare/v1.0.1...v1.1.0) (2026-09-29)
+
+### Features
+
+* **build:** build against the zsh you run ([c9a1f85](https://github.com/zdharma-continuum/zinit-module/commit/c9a1f857ef14a154a274c6cf4f359e85bd29972b))
+
 ## [1.0.1](https://github.com/zdharma-continuum/zinit-module/compare/v1.0.0...v1.0.1) (2026-09-29)
 
 ### Bug Fixes
