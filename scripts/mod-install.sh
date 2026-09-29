@@ -21,7 +21,7 @@ fi
 
 echo ">>> Downloading zdharma-continuum/zinit-module to $ZINIT_HOME/mod-bin"
 if test -d "$ZINIT_HOME/mod-bin/.git"; then
-  cd "$ZINIT_HOME/mod-bin"  || exit 9
+  cd "$ZINIT_HOME/mod-bin" || exit 9
   git pull origin main
 else
   cd "$ZINIT_HOME" || exit 9
@@ -49,7 +49,7 @@ fi
 
 echo "$col_info2-- ./configure --$col_rst"
 if CPPFLAGS=-I/usr/local/include CFLAGS="-g -Wall -O3" LDFLAGS=-L/usr/local/lib \
-    ./configure --disable-gdbm --without-tcsetpgrp; then
+  ./configure --disable-gdbm --without-tcsetpgrp; then
   echo "$col_info2-- make --$col_rst"
   if make; then
     echo "${col_info}Module has been built correctly.$col_rst"
