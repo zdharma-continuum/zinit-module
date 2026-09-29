@@ -688,6 +688,7 @@ fndir
 additionalfpath
 runhelp
 runhelpdir
+MAINT
 zlogout
 zlogin
 zprofile
@@ -767,6 +768,7 @@ enable_zprofile
 enable_zlogin
 enable_zlogout
 enable_dynamic
+enable_maintainer_mode
 enable_restricted_r
 enable_locale
 enable_ansi2knr
@@ -1450,6 +1452,9 @@ Optional Features:
   --enable-zlogin=FILE    the full pathname of the global zlogin script
   --enable-zlogout=FILE   the full pathname of the global zlogout script
   --disable-dynamic       turn off dynamically loaded binary modules
+  --enable-maintainer-mode
+                          regenerate configure and config.h.in when their
+                          sources change
   --disable-restricted-r  turn off r* invocation for restricted shell
   --disable-locale        turn off locale features
   --enable-ansi2knr       translate source to K&R C before compiling
@@ -3332,6 +3337,21 @@ else case e in #(
 esac
 fi
 
+
+# Check whether --enable-maintainer-mode was given.
+if test ${enable_maintainer_mode+y}
+then :
+  enableval=$enable_maintainer_mode; maintainer_mode="$enableval"
+else case e in #(
+  e) maintainer_mode=no ;;
+esac
+fi
+
+if test "x$maintainer_mode" = xyes; then
+  MAINT=
+else
+  MAINT='#'
+fi
 
 
 # Check whether --enable-restricted-r was given.
@@ -12420,10 +12440,6 @@ if test ${zsh_cv_rlimit_vmem_is_rss+y}
 then :
   printf %s "(cached) " >&6
 else case e in #(
-  e) if test "$cross_compiling" = yes
-then :
-  zsh_cv_rlimit_vmem_is_rss=no
-else case e in #(
   e) cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -12432,38 +12448,30 @@ else case e in #(
 #include <sys/time.h>
 #endif
 #include <sys/resource.h>
-int main()
+int
+main (void)
 {
-int ret = 1;
-#if defined(HAVE_RLIMIT_VMEM) && defined(HAVE_RLIMIT_RSS)
-if (RLIMIT_RSS == RLIMIT_VMEM) ret = 0;
-#endif
-return ret;
+static char x[(RLIMIT_VMEM == RLIMIT_RSS)? 1 : -1]
+  ;
+  return 0;
 }
 _ACEOF
-if ac_fn_c_try_run "$LINENO"
+if ac_fn_c_try_compile "$LINENO"
 then :
   zsh_cv_rlimit_vmem_is_rss=yes
 else case e in #(
   e) zsh_cv_rlimit_vmem_is_rss=no ;;
 esac
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext ;;
-esac
-fi
- ;;
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext ;;
 esac
 fi
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $zsh_cv_rlimit_vmem_is_rss" >&5
 printf '%s\n' "$zsh_cv_rlimit_vmem_is_rss" >&6; }
-
 if test x$zsh_cv_rlimit_vmem_is_rss = xyes; then
   printf '%s\n' "#define RLIMIT_VMEM_IS_RSS 1" >>confdefs.h
 
 fi
-
-
 
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking if RLIMIT_VMEM and RLIMIT_AS are the same" >&5
 printf %s "checking if RLIMIT_VMEM and RLIMIT_AS are the same... " >&6; }
@@ -12471,10 +12479,6 @@ if test ${zsh_cv_rlimit_vmem_is_as+y}
 then :
   printf %s "(cached) " >&6
 else case e in #(
-  e) if test "$cross_compiling" = yes
-then :
-  zsh_cv_rlimit_vmem_is_as=no
-else case e in #(
   e) cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -12483,38 +12487,30 @@ else case e in #(
 #include <sys/time.h>
 #endif
 #include <sys/resource.h>
-int main()
+int
+main (void)
 {
-int ret = 1;
-#if defined(HAVE_RLIMIT_VMEM) && defined(HAVE_RLIMIT_AS)
-if (RLIMIT_AS == RLIMIT_VMEM) ret = 0;
-#endif
-return ret;
+static char x[(RLIMIT_VMEM == RLIMIT_AS)? 1 : -1]
+  ;
+  return 0;
 }
 _ACEOF
-if ac_fn_c_try_run "$LINENO"
+if ac_fn_c_try_compile "$LINENO"
 then :
   zsh_cv_rlimit_vmem_is_as=yes
 else case e in #(
   e) zsh_cv_rlimit_vmem_is_as=no ;;
 esac
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext ;;
-esac
-fi
- ;;
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext ;;
 esac
 fi
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $zsh_cv_rlimit_vmem_is_as" >&5
 printf '%s\n' "$zsh_cv_rlimit_vmem_is_as" >&6; }
-
 if test x$zsh_cv_rlimit_vmem_is_as = xyes; then
   printf '%s\n' "#define RLIMIT_VMEM_IS_AS 1" >>confdefs.h
 
 fi
-
-
 
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking if RLIMIT_RSS and RLIMIT_AS are the same" >&5
 printf %s "checking if RLIMIT_RSS and RLIMIT_AS are the same... " >&6; }
@@ -12522,10 +12518,6 @@ if test ${zsh_cv_rlimit_rss_is_as+y}
 then :
   printf %s "(cached) " >&6
 else case e in #(
-  e) if test "$cross_compiling" = yes
-then :
-  zsh_cv_rlimit_rss_is_as=no
-else case e in #(
   e) cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -12534,32 +12526,26 @@ else case e in #(
 #include <sys/time.h>
 #endif
 #include <sys/resource.h>
-int main()
+int
+main (void)
 {
-int ret = 1;
-#if defined(HAVE_RLIMIT_RSS) && defined(HAVE_RLIMIT_AS)
-if (RLIMIT_AS == RLIMIT_RSS) ret = 0;
-#endif
-return ret;
+static char x[(RLIMIT_RSS == RLIMIT_AS)? 1 : -1]
+  ;
+  return 0;
 }
 _ACEOF
-if ac_fn_c_try_run "$LINENO"
+if ac_fn_c_try_compile "$LINENO"
 then :
   zsh_cv_rlimit_rss_is_as=yes
 else case e in #(
   e) zsh_cv_rlimit_rss_is_as=no ;;
 esac
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext ;;
-esac
-fi
- ;;
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext ;;
 esac
 fi
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $zsh_cv_rlimit_rss_is_as" >&5
 printf '%s\n' "$zsh_cv_rlimit_rss_is_as" >&6; }
-
 if test x$zsh_cv_rlimit_rss_is_as = xyes; then
   printf '%s\n' "#define RLIMIT_RSS_IS_AS 1" >>confdefs.h
 
@@ -13119,6 +13105,8 @@ then :
 else case e in #(
   e) for dir in /etc /usr/etc /var/adm /usr/adm /var/run /var/log ./conftest; do
   zsh_cv_path_utmpx=${dir}/utmpx
+  test -f $zsh_cv_path_utmpx && break
+  zsh_cv_path_utmpx=${dir}/utx.active
   test -f $zsh_cv_path_utmpx && break
   zsh_cv_path_utmpx=no
 done
@@ -14258,7 +14246,9 @@ printf '%s\n' "$zsh_cv_sys_elf" >&6; }
     sysv4*|esix*) DLLDFLAGS="${DLLDFLAGS=-G $ldflags}" ;;
     aix*)         DLLDFLAGS="${DLLDFLAGS=-G -bexpall -lc}" ;;
     solaris*|sysv4*|esix*) DLLDFLAGS="${DLLDFLAGS=-G}" ;;
-    darwin*)      DLLDFLAGS="${DLLDFLAGS=-bundle -flat_namespace -undefined suppress}" ;;
+    darwin[0-9].*|darwin1[0-9].*|darwin2[01].*)
+                  DLLDFLAGS="${DLLDFLAGS=-bundle -flat_namespace -undefined suppress}" ;;
+    darwin*)      DLLDFLAGS="${DLLDFLAGS=-bundle -flat_namespace -undefined dynamic_lookup}" ;;
     beos*|haiku*) DLLDFLAGS="${DLLDFLAGS=-nostart}" ;;
     openbsd*)
       if test x$zsh_cv_sys_elf = xyes; then

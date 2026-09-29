@@ -117,7 +117,8 @@ prep:
 .PHONY: prep
 
 headers: $(dir_src)/modules.stamp
-$(dir_src)/modules.stamp: $(MDDS)
+# A reconfigure can add a module. Rerun prep when config.modules is newer than the stamp.
+$(dir_src)/modules.stamp: $(MDDS) $(dir_top)/config.modules
 	$(MAKE) -f $(makefile) $(MAKEDEFS) prep
 	echo 'timestamp for *.mdd files' > $@
 .PHONY: headers

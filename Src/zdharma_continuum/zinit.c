@@ -32,14 +32,6 @@
 #include "zinit.mdh"
 #include "zinit.pro"
 
-/* zsh 5.8.1 replaced the bshin stream with a SHIN buffer stack. */
-/* Weak references let one binary load into zsh before and after that change. */
-#pragma weak bshin
-#pragma weak shinbufsave
-#pragma weak shinbufrestore
-void shinbufsave(void);
-void shinbufrestore(void);
-
 /* Source/bin_dot related data structures {{{ */
 static HandlerFunc originalDot = NULL, originalSource = NULL;
 static HashTable zp_source_events = NULL;
@@ -522,14 +514,6 @@ void zp_setup_options_table() {
     }
 }
 /* }}} */
-/* STATIC FUNCTION: zp_has_shinbuf {{{ */
-/**/
-static int
-zp_has_shinbuf(void)
-{
-    return shinbufsave != NULL && shinbufrestore != NULL;
-}
-/* }}} */
 /* STATIC FUNCTION: zp_conv_opt {{{ */
 /**/
 static
@@ -633,43 +617,23 @@ bin_custom_dot(char *name, char **argv, UNUSED(Options ops), UNUSED(int func))
     return ret == SOURCE_OK ? lastval : 128 - ret;
 }
 /* }}} */
-/* FUNCTION: custom_source {{{ */
+/* STATIC FUNCTION: zp_source_prog {{{ */
+/* Run compiled code with the same shell state handling as zsh's source(). */
+/* Compiled code never reads the shell input, so this needs no input buffer. */
 /**/
-mod_export enum source_return
-custom_source(char *s)
+static enum source_return
+zp_source_prog(char *s, Eprog prog)
 {
-    Eprog prog;
-    int tempfd = -1, fd, cj;
+    int cj, oldshst, osubsh, oloops, ocsp;
     zlong oldlineno;
-    int oldshst, osubsh, oloops;
-    FILE *obshin = NULL;
-    char *old_scriptname = scriptname, *us;
+    char *old_scriptname = scriptname;
     char *old_scriptfilename = scriptfilename;
     unsigned char *ocs;
-    int ocsp;
     int otrap_return = trap_return, otrap_state = trap_state;
     struct funcstack fstack;
     enum source_return ret = SOURCE_OK;
 
-    /* ZP-CODE */
-    SEventNode zp_node;
-    struct timeval zp_tv;
-    struct timezone zp_dummy_tz;
-    double zp_prev_tv;
-    zp_tv.tv_sec = zp_tv.tv_usec = 0;
-    gettimeofday(&zp_tv, &zp_dummy_tz);
-    zp_prev_tv = ((((double) zp_tv.tv_sec) * 1000.0) + (((double) zp_tv.tv_usec) / 1000.0));
-
-    if (!s ||
-	(!(prog = custom_try_source_file((us = unmeta(s)))) &&
-	 (tempfd = movefd(open(us, O_RDONLY | O_NOCTTY))) == -1)) {
-	return SOURCE_NOT_FOUND;
-    }
-
     /* save the current shell state */
-    fd        = SHIN;            /* store the shell input fd                  */
-    if (!zp_has_shinbuf())
-        obshin = bshin;         /* store file handle for buffered shell input */
     osubsh    = subsh;           /* store whether we are in a subshell        */
     cj        = thisjob;         /* store our current job number              */
     oldlineno = lineno;          /* store our current lineno                  */
@@ -680,13 +644,6 @@ custom_source(char *s)
     cmdstack = (unsigned char *) zalloc(CMDSTACKSZ);
     cmdsp = 0;
 
-    if (!prog) {
-	SHIN = tempfd;
-	if (zp_has_shinbuf())
-	    shinbufsave();
-	else
-	    bshin = fdopen(SHIN, "r");
-    }
     subsh  = 0;
     lineno = 1;
     loops  = 0;
@@ -718,32 +675,13 @@ custom_source(char *s)
     fstack.tp = FS_SOURCE;
     funcstack = &fstack;
 
-    if (prog) {
-	pushheap();
-	errflag &= ~ERRFLAG_ERROR;
-	execode(prog, 1, 0, "filecode");
-	popheap();
-	if (errflag)
-	    ret = SOURCE_ERROR;
-    } else {
-	int value;
-	/* loop through the file to be sourced  */
-	switch (value=loop(0, 0))
-	{
-	case LOOP_OK:
-	    /* nothing to do but compilers like a complete enum */
-	    break;
-
-	case LOOP_EMPTY:
-	    /* Empty code resets status */
-	    lastval = 0;
-	    break;
-
-	case LOOP_ERROR:
-	    ret = SOURCE_ERROR;
-	    break;
-	}
-    }
+    pushheap();
+    errflag &= ~ERRFLAG_ERROR;
+    /* Report the context of a plain source. Scripts test ZSH_EVAL_CONTEXT for :file to detect a source. */
+    execode(prog, 1, 0, "file");
+    popheap();
+    if (errflag)
+	ret = SOURCE_ERROR;
 
     funcstack = funcstack->prev;
     sourcelevel--;
@@ -752,20 +690,7 @@ custom_source(char *s)
     trap_return = otrap_return;
 
     /* restore the current shell state */
-    if (prog)
-	freeeprog(prog);
-    else {
-	if (zp_has_shinbuf())
-	    close(SHIN);
-	else
-	    fclose(bshin);
-	fdtable[SHIN] = FDT_UNUSED;
-	SHIN = fd;		     /* the shell input fd                   */
-	if (zp_has_shinbuf())
-	    shinbufrestore();
-	else
-	    bshin = obshin;     /* file handle for buffered shell input */
-    }
+    freeeprog(prog);
     subsh = osubsh;                  /* whether we are in a subshell         */
     thisjob = cj;                    /* current job number                   */
     lineno = oldlineno;              /* our current lineno                   */
@@ -779,6 +704,35 @@ custom_source(char *s)
     zfree(cmdstack, CMDSTACKSZ);
     cmdstack = ocs;
     cmdsp = ocsp;
+
+    return ret;
+}
+/* }}} */
+/* FUNCTION: custom_source {{{ */
+/**/
+mod_export enum source_return
+custom_source(char *s)
+{
+    Eprog prog;
+    enum source_return ret;
+
+    /* ZP-CODE */
+    SEventNode zp_node;
+    struct timeval zp_tv;
+    struct timezone zp_dummy_tz;
+    double zp_prev_tv;
+    zp_tv.tv_sec = zp_tv.tv_usec = 0;
+    gettimeofday(&zp_tv, &zp_dummy_tz);
+    zp_prev_tv = ((((double) zp_tv.tv_sec) * 1000.0) + (((double) zp_tv.tv_usec) / 1000.0));
+
+    if (!s)
+	return SOURCE_NOT_FOUND;
+
+    /* zsh reads plain scripts itself. The module runs only the compiled code. */
+    if ((prog = custom_try_source_file(unmeta(s))))
+	ret = zp_source_prog(s, prog);
+    else if ((ret = source(s)) == SOURCE_NOT_FOUND)
+	return ret;
 
     /* ZP-CODE */
     zp_tv.tv_sec = zp_tv.tv_usec = 0;
@@ -834,12 +788,27 @@ custom_source(char *s)
     return ret;
 }
 /* }}} */
+/* STATIC FUNCTION: zp_zwc_is_newer {{{ */
+/* Return 1 when the .zwc file is strictly newer than its script. */
+/* Equal times count as stale. A rewrite in the same second keeps the old seconds. */
+/**/
+static int
+zp_zwc_is_newer( struct stat *zwc, struct stat *script )
+{
+    if ( zwc->st_mtime != script->st_mtime )
+        return zwc->st_mtime > script->st_mtime;
+#ifdef GET_ST_MTIME_NSEC
+    return GET_ST_MTIME_NSEC( *zwc ) > GET_ST_MTIME_NSEC( *script );
+#else
+    return 0;
+#endif
+}
+/* }}} */
 /* FUNCTION: custom_try_source_file {{{ */
 /**/
 Eprog
 custom_try_source_file(char *file)
 {
-    Eprog prog;
     struct stat stc, stn;
     int rc, rn, faltered = 0, flen;
     char *wc, *tail, *file_dup;
@@ -849,12 +818,8 @@ custom_try_source_file(char *file)
     else
 	tail = file;
 
-    if (strsfx(FD_EXT, file)) {
-	queue_signals();
-	prog = custom_check_dump_file(file, NULL, tail, NULL, 0);
-	unqueue_signals();
-	return prog;
-    }
+    if (strsfx(FD_EXT, file))
+	return try_source_file(file);
     wc = dyncat(file, FD_EXT);
 
     rc = stat(wc, &stc);
@@ -870,8 +835,8 @@ custom_try_source_file(char *file)
     if ( faltered ) {
         *tail++ = '/';
     }
-    /* If there is no zwc file, or if it is less recent than script file */
-    if ( ( !rn && ( rc || ( stc.st_mtime < stn.st_mtime ) ) ) &&
+    /* Compile when the .zwc file is missing or not newer than the script. */
+    if ( ( !rn && ( rc || !zp_zwc_is_newer( &stc, &stn ) ) ) &&
             ( access( file_dup, W_OK ) == 0 || 0 == strcmp(
                 getsparam( "ZINIT_MOD_DEBUG" ) ?
                     getsparam( "ZINIT_MOD_DEBUG" ) : "0",
@@ -884,7 +849,7 @@ custom_try_source_file(char *file)
         memset(ops.ind, 0, MAX_OPS*sizeof(unsigned char));
         ops.args = NULL;
         ops.argscount = ops.argsalloc = 0;
-        ops.ind['U'] = 1;
+        /* Aliases expand at compile time without -U. A plain source also expands them at parse time. */
 
         /* Invoke compilation */
         if ( access( file, R_OK ) == 0 && access( file, F_OK ) == 0 && 
@@ -909,335 +874,10 @@ custom_try_source_file(char *file)
 
     zfree(file_dup, flen);
 
-    queue_signals();
-    if (!rc && (rn || stc.st_mtime >= stn.st_mtime) &&
-	(prog = custom_check_dump_file(wc, &stc, tail, NULL, 0))) {
-	unqueue_signals();
-	return prog;
-    }
-    unqueue_signals();
-    return NULL;
+    /* zsh's own loader maps the .zwc file and validates its header. */
+    return try_source_file(file);
 }
 
-/* }}} */
-
-/* Code copied from Zshell's parse.c {{{ */
-/**/
-#if defined(HAVE_SYS_MMAN_H) && defined(HAVE_MMAP) && defined(HAVE_MUNMAP)
-
-#include <sys/mman.h>
-
-/**/
-#if defined(MAP_SHARED) && defined(PROT_READ)
-
-/**/
-#define USE_MMAP 1
-
-/**/
-#endif
-/**/
-#endif
-
-/**/
-#ifdef USE_MMAP
-
-/* List of dump files mapped. */
-
-static FuncDump dumps;
-/* }}} */
-/* STATIC FUNCTION: custom_zwcstat {{{ */
-/**/
-static int
-custom_zwcstat(char *filename, struct stat *buf)
-{
-    if (stat(filename, buf)) {
-#ifdef HAVE_FSTAT
-        FuncDump f;
-
-	for (f = dumps; f; f = f->next) {
-	    if (!strncmp(filename, f->filename, strlen(f->filename)) &&
-		!fstat(f->fd, buf))
-		return 0;
-	}
-#endif
-	return 1;
-    } else return 0;
-}
-/* }}} */
-/* STATIC FUNCTION: custom_load_dump_file {{{ */
-/* Load a dump file (i.e. map it). */
-static void
-custom_load_dump_file(char *dump, struct stat *sbuf, int other, int len)
-{
-    FuncDump d;
-    Wordcode addr;
-    int fd, off, mlen;
-
-    if (other) {
-	static size_t pgsz = 0;
-
-	if (!pgsz) {
-
-#ifdef _SC_PAGESIZE
-	    pgsz = sysconf(_SC_PAGESIZE);     /* SVR4 */
-#else
-# ifdef _SC_PAGE_SIZE
-	    pgsz = sysconf(_SC_PAGE_SIZE);    /* HPUX */
-# else
-	    pgsz = getpagesize();
-# endif
-#endif
-
-	    pgsz--;
-	}
-	off = len & ~pgsz;
-        mlen = len + (len - off);
-    } else {
-	off = 0;
-        mlen = len;
-    }
-    if ((fd = open(dump, O_RDONLY)) < 0)
-	return;
-
-    fd = movefd(fd);
-    if (fd == -1)
-	return;
-
-    if ((addr = (Wordcode) mmap(NULL, mlen, PROT_READ, MAP_SHARED, fd, off)) ==
-	((Wordcode) -1)) {
-	close(fd);
-	return;
-    }
-    d = (FuncDump) zalloc(sizeof(*d));
-    d->next = dumps;
-    dumps = d;
-    d->dev = sbuf->st_dev;
-    d->ino = sbuf->st_ino;
-    d->fd = fd;
-#ifdef FD_CLOEXEC
-    fcntl(fd, F_SETFD, FD_CLOEXEC);
-#endif
-    d->map = addr + (other ? (len - off) / sizeof(wordcode) : 0);
-    d->addr = addr;
-    d->len = len;
-    d->count = 0;
-    d->filename = ztrdup(dump);
-}
-/* }}} */
-/* Code copied from Zshell's parse.c {{{ */
-#else
-
-#define custom_zwcstat(f, b) (!!stat(f, b))
-
-/**/
-#endif
-/* }}} */
-/* STATIC FUNCTION: custom_dump_find_func {{{ */
-static FDHead
-custom_dump_find_func(Wordcode h, char *name)
-{
-    FDHead n, e = (FDHead) (h + fdheaderlen(h));
-
-    for (n = firstfdhead(h); n < e; n = nextfdhead(n))
-	if (!strcmp(name, fdname(n) + fdhtail(n)))
-	    return n;
-
-    return NULL;
-}
-/* }}} */
-/* STATIC FUNCTION: custom_check_dump_file {{{ */
-/**/
-static Eprog
-custom_check_dump_file(char *file, struct stat *sbuf, char *name, int *ksh,
-		int test_only)
-{
-    int isrec = 0;
-    Wordcode d;
-    FDHead h;
-    FuncDump f;
-    struct stat lsbuf;
-
-    if (!sbuf) {
-	if (custom_zwcstat(file, &lsbuf))
-	    return NULL;
-	sbuf = &lsbuf;
-    }
-
-#ifdef USE_MMAP
-
- rec:
-
-#endif
-
-    d = NULL;
-
-#ifdef USE_MMAP
-
-    for (f = dumps; f; f = f->next)
-	if (f->dev == sbuf->st_dev && f->ino == sbuf->st_ino) {
-	    d = f->map;
-	    break;
-	}
-
-#else
-
-    f = NULL;
-
-#endif
-
-    if (!f && (isrec || !(d = custom_load_dump_header(NULL, file, 0))))
-	return NULL;
-
-    if ((h = custom_dump_find_func(d, name))) {
-	/* Found the name. If the file is already mapped, return the eprog,
-	 * otherwise map it and just go up. */
-	if (test_only)
-	{
-	    /* This is all we need.  Just return dummy. */
-	    return &dummy_eprog;
-	}
-
-#ifdef USE_MMAP
-
-	if (f) {
-	    Eprog prog = (Eprog) zalloc(sizeof(*prog));
-	    Patprog *pp;
-	    int np;
-
-	    prog->flags = EF_MAP;
-	    prog->len = h->len;
-	    prog->npats = np = h->npats;
-	    prog->nref = 1;	/* allocated from permanent storage */
-	    prog->pats = pp = (Patprog *) zalloc(np * sizeof(Patprog));
-	    prog->prog = f->map + h->start;
-	    prog->strs = ((char *) prog->prog) + h->strs;
-	    prog->shf = NULL;
-	    prog->dump = f;
-
-	    incrdumpcount(f);
-
-	    while (np--)
-		*pp++ = dummy_patprog1;
-
-	    if (ksh)
-		*ksh = ((fdhflags(h) & FDHF_KSHLOAD) ? 2 :
-			((fdhflags(h) & FDHF_ZSHLOAD) ? 0 : 1));
-
-	    return prog;
-	} else if (fdflags(d) & FDF_MAP) {
-	    custom_load_dump_file(file, sbuf, (fdflags(d) & FDF_OTHER), fdother(d));
-	    isrec = 1;
-	    goto rec;
-	} else
-
-#endif
-
-	{
-	    Eprog prog;
-	    Patprog *pp;
-	    int np, fd, po = h->npats * sizeof(Patprog);
-
-	    if ((fd = open(file, O_RDONLY)) < 0 ||
-		lseek(fd, ((h->start * sizeof(wordcode)) +
-			   ((fdflags(d) & FDF_OTHER) ? fdother(d) : 0)), 0) < 0) {
-		if (fd >= 0)
-		    close(fd);
-		return NULL;
-	    }
-	    d = (Wordcode) zalloc(h->len + po);
-
-	    if (read(fd, ((char *) d) + po, h->len) != (int)h->len) {
-		close(fd);
-		zfree(d, h->len);
-
-		return NULL;
-	    }
-	    close(fd);
-
-	    prog = (Eprog) zalloc(sizeof(*prog));
-
-	    prog->flags = EF_REAL;
-	    prog->len = h->len + po;
-	    prog->npats = np = h->npats;
-	    prog->nref = 1; /* allocated from permanent storage */
-	    prog->pats = pp = (Patprog *) d;
-	    prog->prog = (Wordcode) (((char *) d) + po);
-	    prog->strs = ((char *) prog->prog) + h->strs;
-	    prog->shf = NULL;
-	    prog->dump = f;
-
-	    while (np--)
-		*pp++ = dummy_patprog1;
-
-	    if (ksh)
-		*ksh = ((fdhflags(h) & FDHF_KSHLOAD) ? 2 :
-			((fdhflags(h) & FDHF_ZSHLOAD) ? 0 : 1));
-
-	    return prog;
-	}
-    }
-    return NULL;
-}
-/* }}} */
-/* STATIC FUNCTION: custom_load_dump_header {{{ */
-/**/
-static Wordcode
-custom_load_dump_header(char *nam, char *name, int err)
-{
-    int fd, v = 1;
-    wordcode buf[FD_PRELEN + 1];
-
-    if ((fd = open(name, O_RDONLY)) < 0) {
-	if (err)
-	    zwarnnam(nam, "%d: can't open zwc file: %s", __LINE__, name);
-	return NULL;
-    }
-    if (read(fd, buf, (FD_PRELEN + 1) * sizeof(wordcode)) !=
-	((FD_PRELEN + 1) * sizeof(wordcode)) ||
-	(v = (fdmagic(buf) != FD_MAGIC && fdmagic(buf) != FD_OMAGIC)) ||
-	strcmp(fdversion(buf), getsparam("ZSH_VERSION"))) {
-	if (err) {
-	    if (!v) {
-		zwarnnam(nam, "%d: zwc file has wrong version (zsh-%s): %s",
-                        __LINE__, fdversion(buf), name);
-	    } else
-		zwarnnam(nam, "%d: invalid zwc file: %s" , __LINE__, name);
-	}
-	close(fd);
-	return NULL;
-    } else {
-	int len;
-	Wordcode head;
-
-	if (fdmagic(buf) == FD_MAGIC) {
-	    len = fdheaderlen(buf) * sizeof(wordcode);
-	    head = (Wordcode) zhalloc(len);
-	}
-	else {
-	    int o = fdother(buf);
-
-	    if (lseek(fd, o, 0) == -1 ||
-		read(fd, buf, (FD_PRELEN + 1) * sizeof(wordcode)) !=
-		((FD_PRELEN + 1) * sizeof(wordcode))) {
-		zwarnnam(nam, "%d: invalid zwc file: %s", __LINE__, name);
-		close(fd);
-		return NULL;
-	    }
-	    len = fdheaderlen(buf) * sizeof(wordcode);
-	    head = (Wordcode) zhalloc(len);
-	}
-	memcpy(head, buf, (FD_PRELEN + 1) * sizeof(wordcode));
-
-	len -= (FD_PRELEN + 1) * sizeof(wordcode);
-	if (read(fd, head + (FD_PRELEN + 1), len) != len) {
-	    close(fd);
-	    zwarnnam(nam, "%d: invalid zwc file: %s", __LINE__, name);
-	    return NULL;
-	}
-	close(fd);
-	return head;
-    }
-}
 /* }}} */
 
 /*
@@ -1771,14 +1411,16 @@ static struct features module_features =
 int
 setup_( UNUSED( Module m ) )
 {
-    zp_setup_options_table();
-    Builtin bn = ( Builtin ) builtintab->getnode2( builtintab, "." );
-    originalDot = bn->handlerfunc;
-    bn->handlerfunc = bin_custom_dot;
+    Builtin dot, src;
 
-    bn = ( Builtin ) builtintab->getnode2( builtintab, "source" );
-    originalSource = bn->handlerfunc;
-    bn->handlerfunc = bin_custom_dot;
+    zp_setup_options_table();
+    dot = ( Builtin ) builtintab->getnode2( builtintab, "." );
+    src = ( Builtin ) builtintab->getnode2( builtintab, "source" );
+    originalDot = dot->handlerfunc;
+    originalSource = src->handlerfunc;
+
+    dot->handlerfunc = bin_custom_dot;
+    src->handlerfunc = bin_custom_dot;
 
     /* Create private hash with source_prepare requests */
     if ( !( zp_source_events = zp_createhashtable( "zp_source_events" ) ) ) {
