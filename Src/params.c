@@ -313,7 +313,7 @@ IPDEF2("TERMINFO_DIRS", terminfodirs_gsu, PM_UNSET),
 IPDEF2("WORDCHARS", wordchars_gsu, 0),
 IPDEF2("IFS", ifs_gsu, PM_DONTIMPORT | PM_RESTRICTED),
 IPDEF2("_", underscore_gsu, PM_DONTIMPORT),
-IPDEF2("KEYBOARD_HACK", keyboard_hack_gsu, PM_DONTIMPORT),
+IPDEF2("KEYBOARD_HACK", keyboard_hack_gsu, PM_DONTIMPORT | PM_UNSET),
 IPDEF2("0", argzero_gsu, 0),
 
 #ifdef USE_LOCALE
@@ -4749,7 +4749,7 @@ keyboardhackgetfn(UNUSED(Param pm))
 
 /**/
 void
-keyboardhacksetfn(UNUSED(Param pm), char *x)
+keyboardhacksetfn(Param pm, char *x)
 {
     if (x) {
 	int len, i;
@@ -4762,13 +4762,20 @@ keyboardhacksetfn(UNUSED(Param pm), char *x)
 	for (i = 0; i < len; i++) {
 	    if (!isascii(STOUC(x[i]))) {
 		zwarn("KEYBOARD_HACK can only contain ASCII characters");
+		free(x);
 		return;
 	    }
 	}
 	keyboardhackchar = len ? STOUC(x[0]) : '\0';
+	if (keyboardhackchar)
+	    pm->node.flags &= ~PM_UNSET;
+	else
+	    pm->node.flags |= PM_UNSET;
 	free(x);
-    } else
+    } else {
 	keyboardhackchar = '\0';
+	pm->node.flags |= PM_UNSET;
+    }
 }
 
 /* Function to get value for special parameter `histchar' */
