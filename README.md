@@ -15,11 +15,21 @@ helper file in a `compile` ice to get it compiled.
 
 ## Requirements
 
-- Zsh with dynamic module support. The module works with Zsh 5.8, 5.9, and 5.9.2 on macOS. Other versions and systems
-  are untested.
-- A C compiler (`clang` or `gcc`), `make`, and `git`.
+- Zsh with dynamic module support.
+- A C compiler (`clang` or `gcc`), `make`, `git`, `curl` or `wget`, and `tar` with xz support.
+- Access to zsh.org. For a build without network access, see [Choose the Zsh to match](#choose-the-zsh-to-match).
 
-You do not need autoconf. The repository includes the generated `configure` script.
+Tests cover Zsh 5.8, 5.9, and 5.9.2 on macOS. The module also compiles against Zsh 5.5.1, 5.6.2, 5.7.1, 5.8.1, and
+5.9.1.
+
+## How the build matches your Zsh
+
+A module must match the internals of the Zsh that loads it. `./configure` asks the `zsh` on your `PATH` for its version.
+Then it downloads that Zsh release from zsh.org into `.build/` and compiles the module against it. After a Zsh upgrade,
+rebuild the module. A new Zsh release needs no change in this repository.
+
+Some Zsh versions have no release tarball, such as a git build that reports `5.9.2-dev-0`. For these, `./configure` uses
+the newest older release and prints a warning.
 
 ## Install
 
@@ -30,8 +40,8 @@ zinit module build
 ```
 
 The command clones or updates the module in `${ZINIT[MODULE_DIR]}`, which defaults to `${ZINIT[HOME_DIR]}/module`. Then
-it runs `./configure` and `make`, and prints the two lines to add to `~/.zshrc`. Run `zinit module info` to print them
-again. Add `--clean` to run `make distclean` before the build.
+it runs `./configure` and `make` for the `zsh` on your `PATH`, and prints the two lines to add to `~/.zshrc`. Run
+`zinit module info` to print them again. Add `--clean` to run `make distclean` before the build.
 
 The build runs `git clean` and `git reset --hard` in the module directory. Do not keep local changes there.
 
@@ -52,20 +62,26 @@ The script prints `zdharma-continuum/zinit` as the module name. The correct name
 ```zsh
 git clone https://github.com/zdharma-continuum/zinit-module.git
 cd zinit-module
-./configure --disable-gdbm --without-tcsetpgrp
+./configure
 make
 ```
 
-The build writes the module to `Src/zdharma_continuum/zinit.so`.
+The build writes the module to `Src/zdharma_continuum/zinit.so`. On macOS, it also writes `zinit.bundle`. Homebrew Zsh
+loads `.bundle` files, and the system Zsh (`/bin/zsh`) loads `.so` files.
 
-### File suffix on macOS
+### Choose the Zsh to match
 
-Zsh loads modules with the suffix that its own build used. The macOS system Zsh (`/bin/zsh`) loads `zinit.so`. Homebrew
-Zsh loads `zinit.bundle`. `zinit module build` creates both files. After a build with `mod-install.sh` or by hand, copy
-the file for Homebrew Zsh:
+| Option                     | Effect                                                            |
+| -------------------------- | ----------------------------------------------------------------- |
+| `--with-zsh=PATH`          | Match this Zsh binary instead of the `zsh` on your `PATH`.        |
+| `--with-zsh-version=X.Y.Z` | Build against this Zsh version. No Zsh binary is necessary.       |
+| `--with-zsh-source=FILE`   | Use a Zsh release tarball that you downloaded. No network access. |
+
+For example, if you load the module into the macOS system Zsh but have Homebrew Zsh first on your `PATH`, run:
 
 ```zsh
-cp Src/zdharma_continuum/zinit.so Src/zdharma_continuum/zinit.bundle
+./configure --with-zsh=/bin/zsh
+make
 ```
 
 ## Load the module
