@@ -32,6 +32,14 @@
 #include "zinit.mdh"
 #include "zinit.pro"
 
+/* zsh 5.8.1 replaced the bshin stream with a SHIN buffer stack. */
+/* Weak references let one binary load into zsh before and after that change. */
+#pragma weak bshin
+#pragma weak shinbufsave
+#pragma weak shinbufrestore
+void shinbufsave(void);
+void shinbufrestore(void);
+
 /* Source/bin_dot related data structures {{{ */
 static HandlerFunc originalDot = NULL, originalSource = NULL;
 static HashTable zp_source_events = NULL;
@@ -514,6 +522,14 @@ void zp_setup_options_table() {
     }
 }
 /* }}} */
+/* STATIC FUNCTION: zp_has_shinbuf {{{ */
+/**/
+static int
+zp_has_shinbuf(void)
+{
+    return shinbufsave != NULL && shinbufrestore != NULL;
+}
+/* }}} */
 /* STATIC FUNCTION: zp_conv_opt {{{ */
 /**/
 static
@@ -626,7 +642,7 @@ custom_source(char *s)
     int tempfd = -1, fd, cj;
     zlong oldlineno;
     int oldshst, osubsh, oloops;
-    FILE *obshin;
+    FILE *obshin = NULL;
     char *old_scriptname = scriptname, *us;
     char *old_scriptfilename = scriptfilename;
     unsigned char *ocs;
@@ -652,7 +668,8 @@ custom_source(char *s)
 
     /* save the current shell state */
     fd        = SHIN;            /* store the shell input fd                  */
-    obshin    = bshin;          /* store file handle for buffered shell input */
+    if (!zp_has_shinbuf())
+        obshin = bshin;         /* store file handle for buffered shell input */
     osubsh    = subsh;           /* store whether we are in a subshell        */
     cj        = thisjob;         /* store our current job number              */
     oldlineno = lineno;          /* store our current lineno                  */
@@ -665,7 +682,10 @@ custom_source(char *s)
 
     if (!prog) {
 	SHIN = tempfd;
-	bshin = fdopen(SHIN, "r");
+	if (zp_has_shinbuf())
+	    shinbufsave();
+	else
+	    bshin = fdopen(SHIN, "r");
     }
     subsh  = 0;
     lineno = 1;
@@ -735,10 +755,16 @@ custom_source(char *s)
     if (prog)
 	freeeprog(prog);
     else {
-	fclose(bshin);
+	if (zp_has_shinbuf())
+	    close(SHIN);
+	else
+	    fclose(bshin);
 	fdtable[SHIN] = FDT_UNUSED;
 	SHIN = fd;		     /* the shell input fd                   */
-	bshin = obshin;		     /* file handle for buffered shell input */
+	if (zp_has_shinbuf())
+	    shinbufrestore();
+	else
+	    bshin = obshin;     /* file handle for buffered shell input */
     }
     subsh = osubsh;                  /* whether we are in a subshell         */
     thisjob = cj;                    /* current job number                   */

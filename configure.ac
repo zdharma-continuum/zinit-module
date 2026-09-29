@@ -976,7 +976,7 @@ else
   [AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #include <sys/types.h>
 
-main() { return sizeof(off_t) < 8; }
+int main() { return sizeof(off_t) < 8; }
 ]])],[zsh_cv_off_t_is_64_bit=yes],[zsh_cv_off_t_is_64_bit=no],[zsh_cv_off_t_is_64_bit=no])])
   if test x$zsh_cv_off_t_is_64_bit = xyes; then
     AC_DEFINE(OFF_T_IS_64_BIT)
@@ -986,7 +986,7 @@ main() { return sizeof(off_t) < 8; }
   [AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #include <sys/types.h>
 
-main() { return sizeof(ino_t) < 8; }
+int main() { return sizeof(ino_t) < 8; }
 ]])],[zsh_cv_ino_t_is_64_bit=yes],[zsh_cv_ino_t_is_64_bit=no],[zsh_cv_ino_t_is_64_bit=no])])
   if test x$zsh_cv_ino_t_is_64_bit = xyes; then
     AC_DEFINE(INO_T_IS_64_BIT)
@@ -1279,7 +1279,7 @@ zsh_cv_func_realpath_accepts_null,
 #include <stdlib.h>
 #include <limits.h>
 ],[
-exit(!realpath("/", (char*)0));
+return(!realpath("/", (char*)0));
 ])],
 [zsh_cv_func_realpath_accepts_null=yes],
 [zsh_cv_func_realpath_accepts_null=no],
@@ -1302,7 +1302,10 @@ AH_TEMPLATE([TGETENT_ACCEPTS_NULL],
 AC_CACHE_CHECK(if tgetent accepts NULL,
 zsh_cv_func_tgetent_accepts_null,
 [AC_RUN_IFELSE([AC_LANG_SOURCE([[
-main()
+#include <fcntl.h>
+int tgetent(char *, char *);
+char *tgetstr(char *, char **);
+int main()
 {
     char buf[4096];
     int r1 = tgetent(buf, "vt100");
@@ -1313,7 +1316,7 @@ main()
     	tgetstr("cl", &u);
 	creat("conftest.tgetent", 0640);
     }
-    exit((r1 != r2) || r2 == -1);
+    return((r1 != r2) || r2 == -1);
 }
 ]])],[if test -f conftest.tgetent; then
     zsh_cv_func_tgetent_accepts_null=yes
@@ -1326,7 +1329,10 @@ fi
 AC_CACHE_CHECK(if tgetent returns 0 on success,
 zsh_cv_func_tgetent_zero_success,
 [AC_RUN_IFELSE([AC_LANG_SOURCE([[
-main()
+#include <fcntl.h>
+int tgetent(char *, char *);
+char *tgetstr(char *, char **);
+int main()
 {
     char buf[4096];
     int r1 = tgetent(buf, "!@#$%^&*");
@@ -1337,7 +1343,7 @@ main()
     	tgetstr("cl", &u);
 	creat("conftest.tgetent0", 0640);
     }
-    exit(r1 == r2);
+    return(r1 == r2);
 }
 ]])],[if test -f conftest.tgetent0; then
     zsh_cv_func_tgetent_zero_success=yes
@@ -1763,7 +1769,7 @@ zsh_cv_rlim_t_is_longer,
 #include <sys/time.h>
 #endif
 #include <sys/resource.h>
-main(){struct rlimit r;exit(sizeof(r.rlim_cur) <= sizeof(long));}]])],[zsh_cv_rlim_t_is_longer=yes],[zsh_cv_rlim_t_is_longer=no],[zsh_cv_rlim_t_is_longer=yes])])
+int main(){struct rlimit r;return(sizeof(r.rlim_cur) <= sizeof(long));}]])],[zsh_cv_rlim_t_is_longer=yes],[zsh_cv_rlim_t_is_longer=no],[zsh_cv_rlim_t_is_longer=yes])])
 if test x$zsh_cv_rlim_t_is_longer = xyes; then
   AC_CACHE_CHECK(if rlim_t is a quad,
   zsh_cv_rlim_t_is_quad_t,
@@ -1772,13 +1778,14 @@ if test x$zsh_cv_rlim_t_is_longer = xyes; then
 #include <sys/time.h>
 #endif
 #include <stdio.h>
+#include <string.h>
 #include <sys/resource.h>
-main() { 
+int main() {
   struct rlimit r;
   char buf[20];
   r.rlim_cur = 0;
   sprintf(buf, "%qd", r.rlim_cur);
-  exit(strcmp(buf, "0"));
+  return(strcmp(buf, "0"));
 }]])],[zsh_cv_rlim_t_is_quad_t=yes],[zsh_cv_rlim_t_is_quad_t=no],[zsh_cv_rlim_t_is_quad_t=no])])
   if test x$zsh_cv_rlim_t_is_quad_t = xyes; then
     AC_DEFINE(RLIM_T_IS_QUAD_T)
@@ -1795,7 +1802,7 @@ else
 #include <sys/time.h>
 #endif
 #include <sys/resource.h>
-  main(){struct rlimit r;r.rlim_cur=-1;exit(r.rlim_cur<0);}]])],[zsh_cv_type_rlim_t_is_unsigned=yes],[zsh_cv_type_rlim_t_is_unsigned=no],[zsh_cv_type_rlim_t_is_unsigned=no])])
+  int main(){struct rlimit r;r.rlim_cur=-1;return(r.rlim_cur<0);}]])],[zsh_cv_type_rlim_t_is_unsigned=yes],[zsh_cv_type_rlim_t_is_unsigned=no],[zsh_cv_type_rlim_t_is_unsigned=no])])
   if test x$zsh_cv_type_rlim_t_is_unsigned = xyes; then
     AC_DEFINE(RLIM_T_IS_UNSIGNED)
     DEFAULT_RLIM_T="unsigned $DEFAULT_RLIM_T"
@@ -2174,7 +2181,9 @@ else
 AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #include <fcntl.h>
 #include <signal.h>
-main()
+#include <unistd.h>
+#include <sys/stat.h>
+int main()
 {
     char c;
     int fd;
@@ -2185,18 +2194,18 @@ main()
 #else
     if(mknod("/tmp/fifo$$", 0010600, 0) < 0)
 #endif
-	exit(1);
+	return(1);
     pid = fork();
     if(pid < 0)
-	exit(1);
+	return(1);
     if(pid) {
 	fd = open("/tmp/fifo$$", O_RDONLY);
-	exit(fd < 0 || read(fd, &c, 1) != 1 || c != 'x');
+	return(fd < 0 || read(fd, &c, 1) != 1 || c != 'x');
     }
     fd = open("/tmp/fifo$$", O_WRONLY);
     ret = (fd < 0 || write(fd, "x", 1) < 1);
     unlink("/tmp/fifo$$");
-    exit(ret);
+    return(ret);
 }
 ]])],[zsh_cv_sys_fifo=yes],[zsh_cv_sys_fifo=no],[zsh_cv_sys_fifo=yes])
 fi])
@@ -2215,7 +2224,7 @@ zsh_cv_sys_link,
 [AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #include <unistd.h>
 #include <fcntl.h>
-main()
+int main()
 {
     int ret;
     char *tmpfile, *newfile;
@@ -2224,11 +2233,11 @@ main()
     unlink(tmpfile);
     unlink(newfile);
     if(creat(tmpfile, 0644) < 0)
-	exit(1);
+	return(1);
     ret = link(tmpfile, newfile);
     unlink(tmpfile);
     unlink(newfile);
-    exit(ret<0);
+    return(ret<0);
 }
 ]])],[zsh_cv_sys_link=yes],[zsh_cv_sys_link=no],[zsh_cv_sys_link=yes])])
 AH_TEMPLATE([HAVE_LINK],
@@ -2247,11 +2256,11 @@ zsh_cv_sys_killesrch,
 #include <unistd.h>
 #include <signal.h>
 #include <errno.h>
-main()
+int main()
 {
     int pid = (getpid() + 10000) & 0xffffff;
     while (pid && (kill(pid, 0) == 0 || errno != ESRCH)) pid >>= 1;
-    exit(errno!=ESRCH);
+    return(errno!=ESRCH);
 }
 ]])],[zsh_cv_sys_killesrch=yes],[zsh_cv_sys_killesrch=no],[zsh_cv_sys_killesrch=yes])])
 AH_TEMPLATE([BROKEN_KILL_ESRCH],
@@ -2273,10 +2282,9 @@ if test x$signals_style = xPOSIX_SIGNALS; then
 #include <signal.h>
 #include <unistd.h>
 int child=0;
-void handler(sig)
-    int sig;
+void handler(int sig)
 {if(sig==SIGCHLD) child=1;}
-main() {
+int main() {
     struct sigaction act;
     sigset_t set;
     int pid, ret;
@@ -2291,7 +2299,7 @@ main() {
     if(pid>0) {
     sigemptyset(&set);
         ret=sigsuspend(&set);
-        exit(child==0);
+        return(child==0);
     }
 }
 ]])],[zsh_cv_sys_sigsuspend=yes],[zsh_cv_sys_sigsuspend=no],[zsh_cv_sys_sigsuspend=yes])])
@@ -2323,14 +2331,14 @@ case "x$zsh_working_tcsetpgrp" in
 #include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h>
-main() {
+int main() {
     int fd;
     int ret;
     fd=open("/dev/tty", O_RDWR);
-    if (fd < 0) exit(2);
+    if (fd < 0) return(2);
     ret=tcsetpgrp(fd, tcgetpgrp(fd));
-    if (ret < 0) exit(1);
-    exit(0);
+    if (ret < 0) return(1);
+    return(0);
 }
 ]])],[zsh_cv_sys_tcsetpgrp=yes],[
 case $? in
@@ -2366,7 +2374,11 @@ if test x$ac_cv_func_getpwnam = xyes; then
     zsh_cv_sys_getpwnam_faked,
     [AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #include <pwd.h>
-main() {
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+int main() {
     struct passwd *pw1, *pw2;
     char buf[1024], name[1024];
     sprintf(buf, "%d:%d", getpid(), rand());
@@ -2374,7 +2386,7 @@ main() {
     if (pw1) strcpy(name, pw1->pw_name);
     sprintf(buf, "%d:%d", rand(), getpid());
     pw2=getpwnam(buf);
-    exit(pw1!=0 && pw2!=0 && !strcmp(name, pw2->pw_name));
+    return(pw1!=0 && pw2!=0 && !strcmp(name, pw2->pw_name));
 }
 ]])],[zsh_cv_sys_getpwnam_faked=no],[zsh_cv_sys_getpwnam_faked=yes],[zsh_cv_sys_getpwnam_faked=no])])
     if test x$zsh_cv_sys_getpwnam_faked = xyes; then
@@ -2692,19 +2704,17 @@ elif test "x$dynamic" = xyes; then
    zsh_cv_sys_elf,
    [AC_RUN_IFELSE([AC_LANG_SOURCE([[/* Test for whether ELF binaries are produced */
 #include <fcntl.h>
-#include <stdlib.h>
-main(argc, argv)
-int argc;
-char *argv[];
+#include <unistd.h>
+int main(int argc, char *argv[])
 {
 	char b[4];
 	int i = open(argv[0],O_RDONLY);
 	if(i == -1) 
-		exit(1); /* fail */
+		return(1); /* fail */
 	if(read(i,b,4)==4 && b[0]==127 && b[1]=='E' && b[2]=='L' && b[3]=='F')
-		exit(0); /* succeed (yes, it's ELF) */
+		return(0); /* succeed (yes, it's ELF) */
 	else
-		exit(1); /* fail */
+		return(1); /* fail */
 }]])],[zsh_cv_sys_elf=yes],[zsh_cv_sys_elf=no],[zsh_cv_sys_elf=yes])])
 
   # We use [0-9]* in case statements, so need to change quoting
@@ -2840,7 +2850,7 @@ LDFLAGS="$old_LDFLAGS")
   AC_CACHE_CHECK(if your dlsym() needs a leading underscore,
    zsh_cv_func_dlsym_needs_underscore,
    [echo failed >conftestval && cat >conftest.c <<EOM
-fred () { }
+void fred () { }
 EOM
     AC_TRY_COMMAND($CC -c $CFLAGS $CPPFLAGS $DLCFLAGS conftest.c 1>&AS_MESSAGE_LOG_FD) &&
     AC_TRY_COMMAND($DLLD $LDFLAGS $DLLDFLAGS -o conftest.$DL_EXT conftest.o 1>&AS_MESSAGE_LOG_FD) &&
@@ -2872,16 +2882,16 @@ char *zsh_gl_sym_addr ;
 
 extern int fred() ;
 
-main()
+int main()
 {
     void * handle ;
     void * symbol ;
     FILE *f=fopen("conftestval", "w");
-    if (!f) exit(1);
+    if (!f) return(1);
     handle = dlopen("./conftest.$DL_EXT", RTLD_LAZY) ;
     if (handle == NULL) {
         fprintf (f, "dlopen failed") ;
-            exit(1);
+            return(1);
     }
     symbol = dlsym(handle, "fred") ;
     if (symbol == NULL) {
@@ -2889,13 +2899,13 @@ main()
         symbol = dlsym(handle, "_fred") ;
         if (symbol == NULL) {
             fprintf (f, "dlsym failed") ;
-                exit(1);
+                return(1);
                 }
         fprintf (f, "yes") ;
     }
     else
         fprintf (f, "no") ;
-    exit(0);
+    return(0);
 }]])],[zsh_cv_func_dlsym_needs_underscore=`cat conftestval`],[zsh_cv_func_dlsym_needs_underscore=failed
     dynamic=no],[zsh_cv_func_dlsym_needs_underscore=no])])
   if test "x$zsh_cv_func_dlsym_needs_underscore" = xyes; then
