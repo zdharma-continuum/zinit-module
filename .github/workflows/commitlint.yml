@@ -1,0 +1,66 @@
+name: Commit lint
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commitlint-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  commitlint:
+    name: commit convention
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Install commitlint
+        id: install
+        run: npm install --no-save --no-audit --no-fund @commitlint/cli@21 @commitlint/config-conventional@21
+
+      # Pass the title through env. Inline ${{ }} expansion lets a crafted title run shell code.
+      - name: Check pull request title
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if ! printf '%s\n' "$PR_TITLE" | npx commitlint > title.log 2>&1; then
+            cat title.log
+            {
+              echo '### Pull request title'
+              echo '```text'
+              cat title.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error title=Invalid pull request title::Use '<type>(<scope>): <subject>'. See CONTRIBUTING.md."
+            exit 1
+          fi
+
+      - name: Check commits
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if ! npx commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose > commits.log 2>&1; then
+            cat commits.log
+            {
+              echo '### Commits'
+              echo '```text'
+              cat commits.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error title=Invalid commit message::Reword the commits that fail. See CONTRIBUTING.md."
+            exit 1
+          fi
