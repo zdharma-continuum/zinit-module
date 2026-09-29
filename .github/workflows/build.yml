@@ -1,0 +1,56 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Every Monday. A new zsh release can break the build without a change here.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runner-zsh:
+    name: build for the runner zsh (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install zsh
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y zsh
+
+      - name: Configure
+        run: ./configure
+
+      - name: Build
+        run: make
+
+      - name: Load the module
+        run: |
+          zsh -f -c '
+            module_path=( "$PWD/Src" $module_path )
+            zmodload zdharma_continuum/zinit || exit 1
+            zpmod source-study > /dev/null || exit 1
+            print -r -- "The module loads into zsh $ZSH_VERSION."
+          '
+
+  newest-release:
+    name: compile against the newest zsh release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # No zsh release is this new. configure then picks the newest release on zsh.org.
+      - name: Configure
+        run: ./configure --with-zsh-version=999.0
+
+      - name: Build
+        run: make
