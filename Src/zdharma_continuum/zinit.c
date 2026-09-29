@@ -677,7 +677,8 @@ zp_source_prog(char *s, Eprog prog)
 
     pushheap();
     errflag &= ~ERRFLAG_ERROR;
-    execode(prog, 1, 0, "filecode");
+    /* Report the context of a plain source. Scripts test ZSH_EVAL_CONTEXT for :file to detect a source. */
+    execode(prog, 1, 0, "file");
     popheap();
     if (errflag)
 	ret = SOURCE_ERROR;
@@ -832,7 +833,7 @@ custom_try_source_file(char *file)
         memset(ops.ind, 0, MAX_OPS*sizeof(unsigned char));
         ops.args = NULL;
         ops.argscount = ops.argsalloc = 0;
-        ops.ind['U'] = 1;
+        /* Aliases expand at compile time without -U. A plain source also expands them at parse time. */
 
         /* Invoke compilation */
         if ( access( file, R_OK ) == 0 && access( file, F_OK ) == 0 && 

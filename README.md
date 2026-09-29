@@ -99,7 +99,10 @@ When you source a file, the module compiles it to `file.zwc` if the `.zwc` file 
 compiles only when it can write to the directory of the script. Then it loads the `.zwc` file. If no current `.zwc` file
 exists, the module sources the plain script.
 
-The module compiles with `zcompile -U`, so Zsh does not expand aliases in compiled scripts.
+Aliases that exist when you run `source` expand in the compiled script, as they do in a plain `source`. The `.zwc` file
+keeps those aliases until the script changes. Zsh compiles the whole file before it runs any line. An alias that the
+script defines therefore does not apply to later lines of the same script. Compiled scripts see `file` at the end of
+`$ZSH_EVAL_CONTEXT`, as plain scripts do.
 
 ### Measure the time of `source` calls
 
