@@ -1771,14 +1771,23 @@ static struct features module_features =
 int
 setup_( UNUSED( Module m ) )
 {
-    zp_setup_options_table();
-    Builtin bn = ( Builtin ) builtintab->getnode2( builtintab, "." );
-    originalDot = bn->handlerfunc;
-    bn->handlerfunc = bin_custom_dot;
+    Builtin dot, src;
 
-    bn = ( Builtin ) builtintab->getnode2( builtintab, "source" );
-    originalSource = bn->handlerfunc;
-    bn->handlerfunc = bin_custom_dot;
+    zp_setup_options_table();
+    dot = ( Builtin ) builtintab->getnode2( builtintab, "." );
+    src = ( Builtin ) builtintab->getnode2( builtintab, "source" );
+    originalDot = dot->handlerfunc;
+    originalSource = src->handlerfunc;
+
+    /* custom_source() needs shinbufsave() or bshin. */
+    /* finish_() runs after a failed setup_(). It restores the saved handlers. */
+    if ( !zp_has_shinbuf() && &bshin == NULL ) {
+        zwarn( "zdharma_continuum/zinit: this zsh exports neither shinbufsave() nor bshin" );
+        return 1;
+    }
+
+    dot->handlerfunc = bin_custom_dot;
+    src->handlerfunc = bin_custom_dot;
 
     /* Create private hash with source_prepare requests */
     if ( !( zp_source_events = zp_createhashtable( "zp_source_events" ) ) ) {
