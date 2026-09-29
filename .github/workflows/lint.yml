@@ -9,7 +9,5 @@ on:
   workflow_dispatch:
 
 jobs:
-  commit:
-    uses: zdharma-continuum/.github/.github/workflows/commit-job.yml@main
   lint:
     uses: zdharma-continuum/.github/.github/workflows/lint-job.yml@main
