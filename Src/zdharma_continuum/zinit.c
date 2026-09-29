@@ -32,14 +32,6 @@
 #include "zinit.mdh"
 #include "zinit.pro"
 
-/* zsh 5.8.1 replaced the bshin stream with a SHIN buffer stack. */
-/* Weak references let one binary load into zsh before and after that change. */
-#pragma weak bshin
-#pragma weak shinbufsave
-#pragma weak shinbufrestore
-void shinbufsave(void);
-void shinbufrestore(void);
-
 /* Source/bin_dot related data structures {{{ */
 static HandlerFunc originalDot = NULL, originalSource = NULL;
 static HashTable zp_source_events = NULL;
@@ -522,14 +514,6 @@ void zp_setup_options_table() {
     }
 }
 /* }}} */
-/* STATIC FUNCTION: zp_has_shinbuf {{{ */
-/**/
-static int
-zp_has_shinbuf(void)
-{
-    return shinbufsave != NULL && shinbufrestore != NULL;
-}
-/* }}} */
 /* STATIC FUNCTION: zp_conv_opt {{{ */
 /**/
 static
@@ -633,43 +617,23 @@ bin_custom_dot(char *name, char **argv, UNUSED(Options ops), UNUSED(int func))
     return ret == SOURCE_OK ? lastval : 128 - ret;
 }
 /* }}} */
-/* FUNCTION: custom_source {{{ */
+/* STATIC FUNCTION: zp_source_prog {{{ */
+/* Run compiled code with the same shell state handling as zsh's source(). */
+/* Compiled code never reads the shell input, so this needs no input buffer. */
 /**/
-mod_export enum source_return
-custom_source(char *s)
+static enum source_return
+zp_source_prog(char *s, Eprog prog)
 {
-    Eprog prog;
-    int tempfd = -1, fd, cj;
+    int cj, oldshst, osubsh, oloops, ocsp;
     zlong oldlineno;
-    int oldshst, osubsh, oloops;
-    FILE *obshin = NULL;
-    char *old_scriptname = scriptname, *us;
+    char *old_scriptname = scriptname;
     char *old_scriptfilename = scriptfilename;
     unsigned char *ocs;
-    int ocsp;
     int otrap_return = trap_return, otrap_state = trap_state;
     struct funcstack fstack;
     enum source_return ret = SOURCE_OK;
 
-    /* ZP-CODE */
-    SEventNode zp_node;
-    struct timeval zp_tv;
-    struct timezone zp_dummy_tz;
-    double zp_prev_tv;
-    zp_tv.tv_sec = zp_tv.tv_usec = 0;
-    gettimeofday(&zp_tv, &zp_dummy_tz);
-    zp_prev_tv = ((((double) zp_tv.tv_sec) * 1000.0) + (((double) zp_tv.tv_usec) / 1000.0));
-
-    if (!s ||
-	(!(prog = custom_try_source_file((us = unmeta(s)))) &&
-	 (tempfd = movefd(open(us, O_RDONLY | O_NOCTTY))) == -1)) {
-	return SOURCE_NOT_FOUND;
-    }
-
     /* save the current shell state */
-    fd        = SHIN;            /* store the shell input fd                  */
-    if (!zp_has_shinbuf())
-        obshin = bshin;         /* store file handle for buffered shell input */
     osubsh    = subsh;           /* store whether we are in a subshell        */
     cj        = thisjob;         /* store our current job number              */
     oldlineno = lineno;          /* store our current lineno                  */
@@ -680,13 +644,6 @@ custom_source(char *s)
     cmdstack = (unsigned char *) zalloc(CMDSTACKSZ);
     cmdsp = 0;
 
-    if (!prog) {
-	SHIN = tempfd;
-	if (zp_has_shinbuf())
-	    shinbufsave();
-	else
-	    bshin = fdopen(SHIN, "r");
-    }
     subsh  = 0;
     lineno = 1;
     loops  = 0;
@@ -718,32 +675,12 @@ custom_source(char *s)
     fstack.tp = FS_SOURCE;
     funcstack = &fstack;
 
-    if (prog) {
-	pushheap();
-	errflag &= ~ERRFLAG_ERROR;
-	execode(prog, 1, 0, "filecode");
-	popheap();
-	if (errflag)
-	    ret = SOURCE_ERROR;
-    } else {
-	int value;
-	/* loop through the file to be sourced  */
-	switch (value=loop(0, 0))
-	{
-	case LOOP_OK:
-	    /* nothing to do but compilers like a complete enum */
-	    break;
-
-	case LOOP_EMPTY:
-	    /* Empty code resets status */
-	    lastval = 0;
-	    break;
-
-	case LOOP_ERROR:
-	    ret = SOURCE_ERROR;
-	    break;
-	}
-    }
+    pushheap();
+    errflag &= ~ERRFLAG_ERROR;
+    execode(prog, 1, 0, "filecode");
+    popheap();
+    if (errflag)
+	ret = SOURCE_ERROR;
 
     funcstack = funcstack->prev;
     sourcelevel--;
@@ -752,20 +689,7 @@ custom_source(char *s)
     trap_return = otrap_return;
 
     /* restore the current shell state */
-    if (prog)
-	freeeprog(prog);
-    else {
-	if (zp_has_shinbuf())
-	    close(SHIN);
-	else
-	    fclose(bshin);
-	fdtable[SHIN] = FDT_UNUSED;
-	SHIN = fd;		     /* the shell input fd                   */
-	if (zp_has_shinbuf())
-	    shinbufrestore();
-	else
-	    bshin = obshin;     /* file handle for buffered shell input */
-    }
+    freeeprog(prog);
     subsh = osubsh;                  /* whether we are in a subshell         */
     thisjob = cj;                    /* current job number                   */
     lineno = oldlineno;              /* our current lineno                   */
@@ -779,6 +703,35 @@ custom_source(char *s)
     zfree(cmdstack, CMDSTACKSZ);
     cmdstack = ocs;
     cmdsp = ocsp;
+
+    return ret;
+}
+/* }}} */
+/* FUNCTION: custom_source {{{ */
+/**/
+mod_export enum source_return
+custom_source(char *s)
+{
+    Eprog prog;
+    enum source_return ret;
+
+    /* ZP-CODE */
+    SEventNode zp_node;
+    struct timeval zp_tv;
+    struct timezone zp_dummy_tz;
+    double zp_prev_tv;
+    zp_tv.tv_sec = zp_tv.tv_usec = 0;
+    gettimeofday(&zp_tv, &zp_dummy_tz);
+    zp_prev_tv = ((((double) zp_tv.tv_sec) * 1000.0) + (((double) zp_tv.tv_usec) / 1000.0));
+
+    if (!s)
+	return SOURCE_NOT_FOUND;
+
+    /* zsh reads plain scripts itself. The module runs only the compiled code. */
+    if ((prog = custom_try_source_file(unmeta(s))))
+	ret = zp_source_prog(s, prog);
+    else if ((ret = source(s)) == SOURCE_NOT_FOUND)
+	return ret;
 
     /* ZP-CODE */
     zp_tv.tv_sec = zp_tv.tv_usec = 0;
@@ -1448,13 +1401,6 @@ setup_( UNUSED( Module m ) )
     src = ( Builtin ) builtintab->getnode2( builtintab, "source" );
     originalDot = dot->handlerfunc;
     originalSource = src->handlerfunc;
-
-    /* custom_source() needs shinbufsave() or bshin. */
-    /* finish_() runs after a failed setup_(). It restores the saved handlers. */
-    if ( !zp_has_shinbuf() && &bshin == NULL ) {
-        zwarn( "zdharma_continuum/zinit: this zsh exports neither shinbufsave() nor bshin" );
-        return 1;
-    }
 
     dot->handlerfunc = bin_custom_dot;
     src->handlerfunc = bin_custom_dot;
