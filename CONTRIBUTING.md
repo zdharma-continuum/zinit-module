@@ -3,58 +3,39 @@
 ## Repository layout
 
 - `Src/zdharma_continuum/zinit.c` is the module source. `zinit.mdd` describes the module to the Zsh build system.
-- `Src/`, `Config/`, `configure.ac`, and `aczsh.m4` hold the Zsh 5.3.1 sources and build system. The module build needs
-  them for headers and generated prototypes.
-- `configure`, `config.h.in`, and `stamp-h.in` come from autoconf. The repository tracks them, so users do not need
-  autoconf.
+- `configure` is a plain shell script, not autoconf output. It downloads the matching Zsh release and writes `Makefile`.
+- `.build/` holds the downloaded tarball and the Zsh build tree. `make distclean` deletes it.
 - `scripts/mod-install.sh` is the installer for users without Zinit.
-- `scripts/copy_from_zsh_src.zsh` copies sources from a Zsh checkout into this repository.
 
 ## Build and test
 
 ```zsh
-./configure --disable-gdbm --without-tcsetpgrp
+./configure
 make
 ```
 
-The repository has no automated tests. Load the module in a clean shell to check a change:
+Load the module in a clean shell to check a change:
 
 ```zsh
 zsh -f -c 'module_path+=( "$PWD/Src" ); zmodload zdharma_continuum/zinit && zpmod source-study'
 ```
 
-For Homebrew Zsh, copy `Src/zdharma_continuum/zinit.so` to `zinit.bundle` first. Also source a script from a read-only
-directory. The module cannot write a `.zwc` file there, so this runs the code path for plain scripts.
+Also source a script from a read-only directory. The module cannot write a `.zwc` file there, so this runs the code path
+for plain scripts.
+
+To compile against another Zsh release, run `./configure --with-zsh-version=X.Y.Z` and `make`. A load test needs a Zsh
+binary of that version.
 
 Run `make distclean` to delete all build output.
 
-## Regenerate `configure`
+## How the build works
 
-After you change `configure.ac` or `aczsh.m4`, run:
+`./configure` extracts the Zsh release into `.build/`. It copies `zinit.c` and `zinit.mdd` into the
+`Src/zdharma_continuum/` directory of that tree and runs the Zsh configure script. `make` generates the Zsh headers and
+compiles only the module. It never compiles Zsh itself.
 
-```zsh
-./.preconfig
-```
-
-This script needs `autoconf` and `autoheader`. Commit `configure`, `config.h.in`, and `stamp-h.in` together with the
-source change. By default, `make` runs autotools only when one of these files is missing.
-
-To let `make` regenerate them after each edit, configure your checkout in maintainer mode:
-
-```zsh
-./configure --enable-maintainer-mode --disable-gdbm --without-tcsetpgrp
-```
-
-## Sync the Zsh sources
-
-```zsh
-scripts/copy_from_zsh_src.zsh /path/to/zsh
-```
-
-The script runs `git clean -dxf` in this repository after a 3-second pause. That command deletes all untracked and
-ignored files. The script then copies `configure.ac` and the `Src/*.c` and `Src/*.h` files that already exist here.
-Last, it applies `patch_cfgac.diff` to `configure.ac`. Check that the patch applied, then run `./.preconfig` and
-rebuild.
+The build workflow runs on each pull request and every week. It builds and loads the module on Ubuntu and macOS. It also
+compiles the module against the newest Zsh release, so a Zsh release that breaks the module shows up in CI.
 
 ## Commit messages
 
