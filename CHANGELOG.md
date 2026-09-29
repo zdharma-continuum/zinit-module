@@ -1,3 +1,15 @@
+## [1.0.1](https://github.com/zdharma-continuum/zinit-module/compare/v1.0.0...v1.0.1) (2026-09-29)
+
+### Bug Fixes
+
+* **build:** add a maintainer mode for autotools ([bda6445](https://github.com/zdharma-continuum/zinit-module/commit/bda64459a8669485f3b32ed201c92ff6c0eb4476))
+* **build:** rerun prep after a reconfigure ([1ffed24](https://github.com/zdharma-continuum/zinit-module/commit/1ffed242ef578a394d83d4af2dc499187f4e4b5e))
+* **configure:** use dynamic_lookup on new darwin ([16e242e](https://github.com/zdharma-continuum/zinit-module/commit/16e242ef39126d432529fae136da5d394d81c6cd))
+* **module:** compare .zwc mtimes in nanoseconds ([6bdcf34](https://github.com/zdharma-continuum/zinit-module/commit/6bdcf343f70c5ddd326776c238a1a2e433a49641))
+* **module:** keep aliases and the eval context ([86734ea](https://github.com/zdharma-continuum/zinit-module/commit/86734ea4d4434518ffe799108ed9999c71239d38))
+* **module:** load .zwc files with the zsh loader ([ddad58e](https://github.com/zdharma-continuum/zinit-module/commit/ddad58e3cfbbc98442f8be394b2383b80a5e06e1))
+* **module:** refuse to load without input buffer ([76cd7e7](https://github.com/zdharma-continuum/zinit-module/commit/76cd7e72c23e785bf28f5d64df367c64cdab7010))
+
 ## 1.0.0 (2026-09-29)
 
 ### Features
