@@ -69,8 +69,8 @@ config.status: $(sdir)/configure
 	$(SHELL) ./config.status --recheck
 
 # The repo tracks configure, config.h.in and stamp-h.in. Run ./.preconfig to regenerate them.
-# A git checkout sets arbitrary mtimes. These rules run only for a missing file.
-$(sdir)/configure:
+# Without --enable-maintainer-mode, MAINT is '#' and hides the timestamp prerequisites.
+$(sdir)/configure: @MAINT@ $(sdir)/aclocal.m4 $(sdir)/aczsh.m4 $(sdir)/configure.ac
 	cd $(sdir) && autoconf
 
 config.h: stamp-h
@@ -81,8 +81,10 @@ config.modules: $(sdir)/config.h.in config.status config.modules.sh
 	cd $(dir_top) && $(SHELL) ./config.status $@ && \
 	$(SHELL) ./config.modules.sh
 
+# A missing config.h.in needs autoheader, even with a current stamp-h.in.
 $(sdir)/config.h.in: $(sdir)/stamp-h.in
-$(sdir)/stamp-h.in:
+	@test -f $@ || { cd $(sdir) && autoheader; }
+$(sdir)/stamp-h.in: @MAINT@ $(sdir)/configure
 	cd $(sdir) && autoheader
 	echo > $(sdir)/stamp-h.in
 

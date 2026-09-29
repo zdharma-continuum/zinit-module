@@ -37,7 +37,13 @@ After you change `configure.ac` or `aczsh.m4`, run:
 ```
 
 This script needs `autoconf` and `autoheader`. Commit `configure`, `config.h.in`, and `stamp-h.in` together with the
-source change. `make` does not regenerate these files. It runs autoconf only when a generated file is missing.
+source change. By default, `make` runs autotools only when one of these files is missing.
+
+To let `make` regenerate them after each edit, configure your checkout in maintainer mode:
+
+```zsh
+./configure --enable-maintainer-mode --disable-gdbm --without-tcsetpgrp
+```
 
 ## Sync the Zsh sources
 

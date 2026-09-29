@@ -688,6 +688,7 @@ fndir
 additionalfpath
 runhelp
 runhelpdir
+MAINT
 zlogout
 zlogin
 zprofile
@@ -767,6 +768,7 @@ enable_zprofile
 enable_zlogin
 enable_zlogout
 enable_dynamic
+enable_maintainer_mode
 enable_restricted_r
 enable_locale
 enable_ansi2knr
@@ -1450,6 +1452,9 @@ Optional Features:
   --enable-zlogin=FILE    the full pathname of the global zlogin script
   --enable-zlogout=FILE   the full pathname of the global zlogout script
   --disable-dynamic       turn off dynamically loaded binary modules
+  --enable-maintainer-mode
+                          regenerate configure and config.h.in when their
+                          sources change
   --disable-restricted-r  turn off r* invocation for restricted shell
   --disable-locale        turn off locale features
   --enable-ansi2knr       translate source to K&R C before compiling
@@ -3332,6 +3337,21 @@ else case e in #(
 esac
 fi
 
+
+# Check whether --enable-maintainer-mode was given.
+if test ${enable_maintainer_mode+y}
+then :
+  enableval=$enable_maintainer_mode; maintainer_mode="$enableval"
+else case e in #(
+  e) maintainer_mode=no ;;
+esac
+fi
+
+if test "x$maintainer_mode" = xyes; then
+  MAINT=
+else
+  MAINT='#'
+fi
 
 
 # Check whether --enable-restricted-r was given.

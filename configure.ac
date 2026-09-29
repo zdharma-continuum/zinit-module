@@ -248,6 +248,17 @@ AC_ARG_ENABLE(dynamic,
 AS_HELP_STRING([--disable-dynamic],[turn off dynamically loaded binary modules]),
 [dynamic="$enableval"], [dynamic=yes])
 
+dnl Maintainers can let make regenerate configure and config.h.in.
+AC_ARG_ENABLE(maintainer-mode,
+AS_HELP_STRING([--enable-maintainer-mode],[regenerate configure and config.h.in when their sources change]),
+[maintainer_mode="$enableval"], [maintainer_mode=no])
+if test "x$maintainer_mode" = xyes; then
+  MAINT=
+else
+  MAINT='#'
+fi
+AC_SUBST(MAINT)dnl
+
 dnl Do you want to disable restricted on r* commands
 ifdef([restricted-r],[undefine([restricted-r])])dnl
 AH_TEMPLATE([RESTRICTED_R],
